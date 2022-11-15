@@ -9,9 +9,8 @@ np.random.seed(1)
 from worker import Worker
 from worker_validator import WorkerValidator
 from net import Net
-from _utils import   aggregate_model, \
+from utils import   aggregate_model, \
                     process_data_final, \
-                    select_node_to_discard_trustfed, \
                     select_node_to_discard_truflass, \
                     save_np_to_file, \
                     save_2d_matrix_to_csv_file, \
