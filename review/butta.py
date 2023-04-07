@@ -1,5 +1,6 @@
 import utils
 import tensorflow as tf
+import custom_extension
 
 if __name__ == "__main__":
     #initialize global model
@@ -26,8 +27,8 @@ if __name__ == "__main__":
     print(y_test[0])
     print("-----------------")
 
-    y_test = y_test[:1000]
-    X_test = X_test[:1000]
+    X_test, y_test = custom_extension.sample_test(X_test, y_test, 1000)
+    
     print(y_test)
     print("-----------------")
     print(len(y_test))

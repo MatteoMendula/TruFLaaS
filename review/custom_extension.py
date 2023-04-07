@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 import csv
 import constants
 
-def create_small_batches(clients_batched_standard, percentage_small=0.5, how_small = 0.1):
+def create_small_batches(clients_batched_standard, percentage_how_many_small, sample_indices):
+    original_size = len(clients_batched_standard.keys())
+    how_many_small = int(original_size * percentage_how_many_small)
     new_batches_with_small_clients = {}
     for index, client_name in enumerate(clients_batched_standard.keys()):
         # small clients
-        if index in range(int(len(clients_batched_standard.keys())*percentage_small)):
-            new_batches_with_small_clients[client_name] = clients_batched_standard[client_name][:int(len(clients_batched_standard[client_name])*how_small)]
+        if index in range(how_many_small):
+            new_batches_with_small_clients[client_name] = [clients_batched_standard[client_name][index] for index in sample_indices]
         # normal clients
         else:        
             new_batches_with_small_clients[client_name] = clients_batched_standard[client_name]
@@ -102,4 +104,9 @@ def save_csv(dict_of_metrics):
                     line += "{}, ".format(dict_of_metrics[case][metric][round])
             file.write(line+"\n")
 
-
+def sample_test(X_test, y_test, sample_percentage=0.2):
+    sample_size = int(len(X_test)*sample_percentage)
+    sample_indices = np.random.choice(len(X_test), sample_size, replace=False)
+    X_test_sample = X_test[sample_indices]
+    y_test_sample = y_test[sample_indices]
+    return X_test_sample, y_test_sample

@@ -15,3 +15,8 @@ optimizer = tf.keras.optimizers.legacy.RMSprop(learning_rate=learning_rate)
 
 BATCH_SIZE = 64
 sampling_technique = "iid"
+
+
+# ----------------- EXP 1
+how_small_percentage = 0.01
+percentage_small_clients = 1

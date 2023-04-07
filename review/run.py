@@ -6,6 +6,7 @@ import custom_extension
 
 import tensorflow as tf
 import keras
+import numpy as np
 
 DEBUG = True
 
@@ -20,21 +21,27 @@ if __name__ == "__main__":
 
     y_test = utils.convert_to_categorical(y_test, nb_classes)
 
-    # reduce test set size
-    y_test = y_test[:1000]
-    X_test = X_test[:1000]
-    test_batched = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
+    # reduce test set size ----------------------------------------------------- LOOK HERE
+    X_test_reduced, y_test_reduced = custom_extension.sample_test(X_test, y_test, 0.2)
+
+    test_batched_overall = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
+    test_batched_reduced = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
 
     print("Creating clients...")
     clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
     client_names = list(clients_batched_original.keys())
     random.shuffle(client_names)
-    clients_batched = custom_extension.create_small_batches(clients_batched_original, percentage_small=1, how_small = 0.8)  # ------------------------------------------------------ HERE
+
+    # this is meant to give to all clients the same samples indexes
+    original_sample_size = len(clients_batched_original[client_names[0]])
+    small_sample_size = int(original_sample_size * constants.how_small_percentage)
+    sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
     
+    # create small batches
     clients_batched_dic = {}
-    clients_batched_dic["NO_SELECTION"] = custom_extension.create_small_batches(clients_batched_original, percentage_small=1, how_small = 0.01)
-    clients_batched_dic["TRUFLAAS"] = custom_extension.create_small_batches(clients_batched_original, percentage_small=1, how_small = 0.01)
-    clients_batched_dic["TRUSTFED"] = custom_extension.create_small_batches(clients_batched_original, percentage_small=1, how_small = 0.01)
+    clients_batched_dic["NO_SELECTION"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = constants.percentage_small_clients, sample_indices = sample_indices)
+    clients_batched_dic["TRUFLAAS"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = constants.percentage_small_clients, sample_indices = sample_indices)
+    clients_batched_dic["TRUSTFED"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = constants.percentage_small_clients, sample_indices = sample_indices)
 
     global_model = {}
     global_model["NO_SELECTION"] : keras.Model = utils.get_model(input_shape, nb_classes)
@@ -164,9 +171,9 @@ if __name__ == "__main__":
         for i in range(constants.num_clients):
             threads["TRUSTFED"][i].join()
 
-        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], test_batched, comm_round)
-        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched, comm_round, mode = "TRUFLAAS")
-        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], test_batched, comm_round, mode = "TRUSTFED")
+        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], test_batched_reduced, comm_round)
+        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched_reduced, comm_round, mode = "TRUFLAAS")
+        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], test_batched_reduced, comm_round, mode = "TRUSTFED")
 
         #to get the average over all the local model, we simply calculate the average of the sum of local weights
         average_weights["NO_SELECTION"] : list = utils.average_model_weights(local_weight_list["NO_SELECTION"])
@@ -179,7 +186,7 @@ if __name__ == "__main__":
         global_model["TRUSTFED"].set_weights(average_weights["TRUSTFED"])
 
         # testing global model with NO_SELECTION
-        for(x_batch, y_batch) in test_batched:
+        for(x_batch, y_batch) in test_batched_overall:
             g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["NO_SELECTION"], comm_round, "global no_selection")
             testing_metrics["NO_SELECTION"]["loss"].append(g_loss)
             testing_metrics["NO_SELECTION"]["accuracy"].append(g_accuracy)
@@ -193,7 +200,7 @@ if __name__ == "__main__":
                 print("New NO_SELECTION Weights Saved")
             
         # testing global model with TRUFLAAS
-        for (x_batch, y_batch) in test_batched:
+        for (x_batch, y_batch) in test_batched_overall:
             g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUFLAAS"], comm_round, "global truflaas")
             testing_metrics["TRUFLAAS"]["loss"].append(g_loss)
             testing_metrics["TRUFLAAS"]["accuracy"].append(g_accuracy)
@@ -207,7 +214,7 @@ if __name__ == "__main__":
                 print("New TRUFLAAS Weights Saved")
 
         # testing global model with TRUSTFED
-        for (x_batch, y_batch) in test_batched:
+        for (x_batch, y_batch) in test_batched_overall:
             g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUSTFED"], comm_round, "global trustfed")
             testing_metrics["TRUSTFED"]["loss"].append(g_loss)
             testing_metrics["TRUSTFED"]["accuracy"].append(g_accuracy)
