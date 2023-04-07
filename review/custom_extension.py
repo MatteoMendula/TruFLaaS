@@ -74,13 +74,12 @@ def select_all_clients(client_set, test_batched, comm_round):
     return local_weight_list
 
 def save_graphs(dict_of_metrics):
-    metrics = ["loss", "accuracy", "precision", "recall", "f1"]
     colors = {
         "TRUFLAAS": "red",
         "TRUSTFED": "blue",
         "NO_SELECTION": "green"
     }
-    for metric in metrics:
+    for metric in constants.metrics:
         for case in dict_of_metrics.keys():
             plt.plot(dict_of_metrics[case][metric], label="{}_{}".format(case, metric), color=colors[case])
         plt.legend()
@@ -88,7 +87,6 @@ def save_graphs(dict_of_metrics):
         plt.show()
 
 def save_csv(dict_of_metrics):
-    metrics = ["loss", "accuracy", "precision", "recall", "f1"]
     header = ["round","loss_no_selection", "loss_truflaas", "loss_trustfed"]
     header += ["accuracy_no_selection", "accuracy_truflaas", "accuracy_trustfed"]
     header += ["precision_no_selection", "precision_truflaas", "precision_trustfed"]
@@ -99,7 +97,7 @@ def save_csv(dict_of_metrics):
         file.write(line+"\n")
         for round in range(constants.comms_round):
             line = "{}, ".format(round)
-            for metric in metrics:
+            for metric in constants.metrics:
                 for case in dict_of_metrics.keys():
                     line += "{}, ".format(dict_of_metrics[case][metric][round])
             file.write(line+"\n")
