@@ -79,7 +79,7 @@ def save_graphs(dict_of_metrics):
         "TRUSTFED": "blue",
         "NO_SELECTION": "green"
     }
-    for metric in constants.metrics:
+    for metric in constants.testing_metrics:
         for case in dict_of_metrics.keys():
             plt.plot(dict_of_metrics[case][metric], label="{}_{}".format(case, metric), color=colors[case])
         plt.legend()
@@ -97,7 +97,7 @@ def save_csv(dict_of_metrics):
         file.write(line+"\n")
         for round in range(constants.comms_round):
             line = "{}, ".format(round)
-            for metric in constants.metrics:
+            for metric in constants.testing_metrics:
                 for case in dict_of_metrics.keys():
                     line += "{}, ".format(dict_of_metrics[case][metric][round])
             file.write(line+"\n")
