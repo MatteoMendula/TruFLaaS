@@ -81,7 +81,6 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
         model = client_set[client_name]["model"]
         for (x_batch, y_batch) in test_batched:
             threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i), client_name, evaluation_scores)) 
-            threads[i].start()
 
     if test_batch_rares != None:
         for i, client_name in enumerate(client_names):
@@ -91,7 +90,13 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
                 threads_rares[i].start()
 
     for i in range(len(threads)):
-        threads[i].join() 
+        threads[i].start()
+    for i in range(len(threads_rares)):
+        threads_rares[i].start()
+
+    for i in range(len(threads)):
+        threads[i].join()
+    for i in range(len(threads_rares)): 
         threads_rares[i].join() 
 
     # -----------------------------
@@ -152,9 +157,10 @@ def select_all_clients(client_set, test_batched, comm_round):
         model = client_set[client_name]["model"]
         for(x_batch, y_batch) in test_batched:
             threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i)))     
-            threads[i].start()
+    for i in range(len(threads)):
+        threads[i].start()
 
-    for i in range(constants.num_clients):
+    for i in range(len(threads)):
         threads[i].join() 
 
 

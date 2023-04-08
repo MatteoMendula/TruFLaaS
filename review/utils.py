@@ -19,11 +19,8 @@ from keras.layers import Conv1D, GlobalAveragePooling1D, Dense, \
 import keras
 
 from net import INCEPTION_Block
-import constants
-
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-
 
 def split_df(df):
     # read data from pickle
@@ -256,7 +253,7 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
 
     #fit local model with client's data
     print(f"Round: {comm_round} | Client: {client_name} training")
-    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=constants.local_client_epochs, verbose=0, class_weight=class_weights)
+    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=1, verbose=0, class_weight=class_weights)
 
     #scale the model weights and add to list
     # scaling_factor = weight_scalling_factor(client_set, client_name)
@@ -287,7 +284,7 @@ def test_model(X_test, y_test,  model, comm_round, mode, client_name = None, eva
 
     if client_name != None and evaluation_scores != None:
         # append accuracy to list
-        evaluation_scores[client_name] = accuracy
+        evaluation_scores[client_name] = loss
     
     print('mode: {} | comm_round: {} | global_loss: {} | global_accuracy: {:.4} | global_recall: {:.4} | global_precision: {:.4} | global_f1_score: {:.4} \n'.format(mode, comm_round, loss, accuracy, recall, precision, f1))
     return loss, accuracy, precision, recall, f1
