@@ -6,6 +6,7 @@ import tensorflow as tf
 learning_rate = 1e-2
 comms_round = 10
 num_clients = 30
+local_client_epochs = 1
 
 std_factor = 0.8
 

@@ -19,6 +19,7 @@ from keras.layers import Conv1D, GlobalAveragePooling1D, Dense, \
 import keras
 
 from net import INCEPTION_Block
+import constants
 
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -193,9 +194,9 @@ def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     return x + res
 
 def get_model(input_shape, nb_classes) -> tf.keras.Model:
-    head_size=64 # Embedding size for attention
-    num_heads=3 # Number of attention heads
-    ff_dim=128 # Hidden layer size in feed forward network inside transformer
+    head_size=64                        # Embedding size for attention
+    num_heads=3                         # Number of attention heads
+    ff_dim=128                          # Hidden layer size in feed forward network inside transformer
     num_transformer_blocks=1
     mlp_units=[32]
     mlp_dropout=0.1
@@ -255,7 +256,7 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
 
     #fit local model with client's data
     print(f"Round: {comm_round} | Client: {client_name} training")
-    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=1, verbose=0, class_weight=class_weights)
+    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=constants.local_client_epochs, verbose=0, class_weight=class_weights)
 
     #scale the model weights and add to list
     # scaling_factor = weight_scalling_factor(client_set, client_name)
@@ -263,7 +264,7 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
     # scaled_local_weight_list.append(scaled_weights)
     # return scaled_weights
 
-def test_model(X_test, y_test,  model, comm_round, mode):
+def test_model(X_test, y_test,  model, comm_round, mode, client_name = None, evaluation_scores = None):
     cce = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
     #logits = model.predict(X_test, batch_size=100)
     logits = model.predict(X_test)
@@ -283,6 +284,10 @@ def test_model(X_test, y_test,  model, comm_round, mode):
     
     f = f1_score(y_test, logits)
     f1 = f.numpy()
+
+    if client_name != None and evaluation_scores != None:
+        # append accuracy to list
+        evaluation_scores[client_name] = accuracy
     
     print('mode: {} | comm_round: {} | global_loss: {} | global_accuracy: {:.4} | global_recall: {:.4} | global_precision: {:.4} | global_f1_score: {:.4} \n'.format(mode, comm_round, loss, accuracy, recall, precision, f1))
     return loss, accuracy, precision, recall, f1

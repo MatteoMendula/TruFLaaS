@@ -316,5 +316,5 @@ if __name__ == "__main__":
                         class_weights=class_weights, 
 
                         test_batched_overall=test_batched_overall, 
-                        test_batched_reduced=test_batched_reduced
+                        test_batched_reduced=test_batched_reduced,
                         test_batched_reduced_only_rare=test_batched_reduced_only_rare)

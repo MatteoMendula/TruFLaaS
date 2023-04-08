@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import constants
+from threading import Thread
 
 def create_small_batches(clients_batched_standard, percentage_how_many_small, sample_indices):
     original_size = len(clients_batched_standard.keys())
@@ -57,8 +58,8 @@ def create_batches_with_no_rares(clients_batches_original, clients_batches_no_ra
 
     return new_batches_with_no_rares_clients
 
-def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor, test_batch_rares = False):
-    if mode != "TRUFLAAS" and mode != "TRUSTFED" and mode != "UNION" and mode != "INTERSECTION":
+def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor, test_batch_rares = None):
+    if mode != "TRUFLAAS" and mode != "TRUSTFED" and mode != "UNION" and mode != "INTERSECTION":    
         print("[select_best_clients] mode error")
         return None
 
@@ -69,13 +70,39 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
     global_count = utils.calculate_global_count(client_set)
 
     local_weight_list = list()
+    threads = [None] * len(client_names)
+    threads_rares = [None] * len(client_names)
 
     print("TESTING: ", mode)
+    # -----------------------------
+    # parallel version
+    # -----------------------------
+    # for i, client_name in enumerate(client_names):
+    #     model = client_set[client_name]["model"]
+    #     for (x_batch, y_batch) in test_batched:
+    #         threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i), client_name, evaluation_scores)) 
+    #         threads[i].start()
+
+    # if test_batch_rares != None:
+    #     for i, client_name in enumerate(client_names):
+    #         model = client_set[client_name]["model"]
+    #         for(x_batch, y_batch) in test_batch_rares:
+    #             threads_rares[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local-rares{}".format(i), client_name, evaluation_scores_rares)) 
+    #             threads_rares[i].start()
+
+    # for i in range(len(threads)):
+    #     threads[i].join() 
+    #     threads_rares[i].join() 
+
+    # -----------------------------
+    # sequential version - loss
+    # -----------------------------
     for client_name in client_names:
         model = client_set[client_name]["model"]
-        for(x_batch, y_batch) in test_batched:
+        for (x_batch, y_batch) in test_batched:
             g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
-            evaluation_scores[client_name] = g_accuracy
+            evaluation_scores[client_name] = g_loss
+
             if test_batch_rares != False:
                 g_loss_rares, g_accuracy_rares, g_precision_rares, g_recall_rares, g_f1_rares = utils.test_model(x_batch, y_batch, model, comm_round, "local rates")
                 evaluation_scores_rares[client_name] = g_accuracy_rares
@@ -97,7 +124,7 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
         # here intersection and union switched because we are selecting the clients instead of excluding them
         elif (mode == "INTERSECTION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares or acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):
             selected_clients[client_name] = client_set[client_name]
-        elif (mode == "UNION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std))):  
+        elif (mode == "UNION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):  
             selected_clients[client_name] = client_set[client_name]
 
     print("selected clients: ", selected_clients.keys())
@@ -113,9 +140,27 @@ def select_all_clients(client_set, test_batched, comm_round):
     client_names = list(client_set.keys())
 
     local_weight_list = list()
+    threads = [None] * len(client_names)
 
-    # test anyway
+    # test anyway ?
     print("TESTING: ", "ALL")
+
+    # -----------------------------
+    # parallel version
+    # -----------------------------
+    # for i, client_name in enumerate(client_names):  
+    #     model = client_set[client_name]["model"]
+    #     for(x_batch, y_batch) in test_batched:
+    #         threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i)))     
+    #         threads[i].start()
+
+    # for i in range(constants.num_clients):
+    #     threads[i].join() 
+
+
+    # -----------------------------
+    # sequential version
+    # -----------------------------
     for client_name in client_names:
         model = client_set[client_name]["model"]
         for(x_batch, y_batch) in test_batched:
@@ -136,7 +181,10 @@ def save_graphs(dict_of_metrics, experiment_name, special_clients):
     colors = {
         "TRUFLAAS": "red",
         "TRUSTFED": "blue",
-        "NO_SELECTION": "green"
+        "NO_SELECTION": "green",
+
+        "UNION": "red",
+        "INTERSECTION": "blue"
     }
     for metric in constants.testing_metrics:
         plt.clf()

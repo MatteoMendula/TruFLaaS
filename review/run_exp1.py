@@ -31,6 +31,8 @@ def run_single_case(
     small_sample_size = int(original_sample_size * how_small_percentage)
     sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
 
+    print("sample_indices", sample_indices)
+
     # create small batches
     clients_batched_dic = {}
     clients_batched_dic["NO_SELECTION"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = percentage_small_clients, sample_indices = sample_indices)
@@ -61,8 +63,8 @@ def run_single_case(
 
     for (client_name, data) in clients_batched_dic["NO_SELECTION"].items():
         local_model = utils.get_model(input_shape, nb_classes)
-        local_model.compile(loss=constants.loss, 
-                        optimizer=constants.optimizer, 
+        local_model.compile(loss=constants.loss,
+                        optimizer=constants.optimizer,
                         metrics=constants.metrics)
         
         client_set["NO_SELECTION"][client_name]["model"] = local_model
