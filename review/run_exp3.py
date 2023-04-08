@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
     # experiments 1 --------------------------------------- 
     # reducted clients
-    experiment_name = "exp2"
+    experiment_name = "exp3"
     how_small_percentage = 0.01
     runs = [
         {
