@@ -257,17 +257,17 @@ if __name__ == "__main__":
 
     # experiments 1 --------------------------------------- 
     # reducted clients
-    experiment_name = "exp3"
+    experiment_name = "exp2"
     how_small_percentage = 0.01
     runs = [
         {
-            "percentage_noisy_clients": 0
+            "percentage_noisy_clients": 1
         },
         {
-            "percentage_noisy_clients": 0.1
+            "percentage_noisy_clients": 0.9
         },
         {
-            "percentage_noisy_clients": 0.25
+            "percentage_noisy_clients": 0.75
         }
     ]
 
