@@ -77,35 +77,35 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
     # -----------------------------
     # parallel version
     # -----------------------------
-    # for i, client_name in enumerate(client_names):
-    #     model = client_set[client_name]["model"]
-    #     for (x_batch, y_batch) in test_batched:
-    #         threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i), client_name, evaluation_scores)) 
-    #         threads[i].start()
+    for i, client_name in enumerate(client_names):
+        model = client_set[client_name]["model"]
+        for (x_batch, y_batch) in test_batched:
+            threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i), client_name, evaluation_scores)) 
+            threads[i].start()
 
-    # if test_batch_rares != None:
-    #     for i, client_name in enumerate(client_names):
-    #         model = client_set[client_name]["model"]
-    #         for(x_batch, y_batch) in test_batch_rares:
-    #             threads_rares[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local-rares{}".format(i), client_name, evaluation_scores_rares)) 
-    #             threads_rares[i].start()
+    if test_batch_rares != None:
+        for i, client_name in enumerate(client_names):
+            model = client_set[client_name]["model"]
+            for(x_batch, y_batch) in test_batch_rares:
+                threads_rares[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local-rares{}".format(i), client_name, evaluation_scores_rares)) 
+                threads_rares[i].start()
 
-    # for i in range(len(threads)):
-    #     threads[i].join() 
-    #     threads_rares[i].join() 
+    for i in range(len(threads)):
+        threads[i].join() 
+        threads_rares[i].join() 
 
     # -----------------------------
     # sequential version - loss
     # -----------------------------
-    for client_name in client_names:
-        model = client_set[client_name]["model"]
-        for (x_batch, y_batch) in test_batched:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
-            evaluation_scores[client_name] = g_loss
+    # for client_name in client_names:
+    #     model = client_set[client_name]["model"]
+    #     for (x_batch, y_batch) in test_batched:
+    #         g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
+    #         evaluation_scores[client_name] = g_loss
 
-            if test_batch_rares != False:
-                g_loss_rares, g_accuracy_rares, g_precision_rares, g_recall_rares, g_f1_rares = utils.test_model(x_batch, y_batch, model, comm_round, "local rates")
-                evaluation_scores_rares[client_name] = g_accuracy_rares
+    #         if test_batch_rares != False:
+    #             g_loss_rares, g_accuracy_rares, g_precision_rares, g_recall_rares, g_f1_rares = utils.test_model(x_batch, y_batch, model, comm_round, "local rates")
+    #             evaluation_scores_rares[client_name] = g_accuracy_rares
 
     evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
     evaluation_scores_std = np.std(list(evaluation_scores.values()))
