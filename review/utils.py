@@ -263,23 +263,27 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
 
 def test_model(X_test, y_test,  model, comm_round, mode, client_name = None, evaluation_scores = None):
     cce = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-    #logits = model.predict(X_test, batch_size=100)
-    logits = model.predict(X_test)
-    loss = cce(y_test, logits)
-    y_hat = np.argmax(logits, axis=1)
-    y_true = np.argmax(y_test, axis=1)
 
-    accuracy = accuracy_score(np.argmax(y_test, axis=1), np.argmax(logits, axis=1))
+    _X_test = list(X_test).copy()
+    _y_test = list(y_test).copy()
+
+    #logits = model.predict(_X_test, batch_size=100)
+    logits = model.predict(_X_test)
+    loss = cce(_y_test, logits)
+    y_hat = np.argmax(logits, axis=1)
+    y_true = np.argmax(_y_test, axis=1)
+
+    accuracy = accuracy_score(np.argmax(_y_test, axis=1), np.argmax(logits, axis=1))
     
     r = Recall()
-    r.update_state(y_test, logits)
+    r.update_state(_y_test, logits)
     recall = r.result().numpy()
     
     p = Precision()
-    p.update_state(y_test, logits)
+    p.update_state(_y_test, logits)
     precision = p.result().numpy()
     
-    f = f1_score(y_test, logits)
+    f = f1_score(_y_test, logits)
     f1 = f.numpy()
 
     if client_name != None and evaluation_scores != None:
