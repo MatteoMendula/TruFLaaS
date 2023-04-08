@@ -249,7 +249,6 @@ if __name__ == "__main__":
     #initialize global model
 
     # experiments 1 --------------------------------------- 
-    # reducted clients
     experiment_name = "exp1"
     how_small_percentage = 0.01
     runs = [

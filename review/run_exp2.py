@@ -14,10 +14,10 @@ def run_single_case(
         experiment_name, 
         X_train, 
         y_train,
-        X_train_malicious,
-        y_train_malicious,
+        X_train_no_rare,
+        y_train_no_rare,
         how_small_percentage,
-        percentage_noisy_clients, 
+        percentage_no_rares_clients, 
         input_shape, 
         nb_classes, 
         class_weights,
@@ -29,7 +29,7 @@ def run_single_case(
     
     print("Creating clients...")
     clients_batches_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
-    clients_batches_malicous = utils.create_clients(X_train_malicious, y_train_malicious, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
+    clients_batches_no_rares = utils.create_clients(X_train_no_rare, y_train_no_rare, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
     client_names = list(clients_batches_original.keys())
     random.shuffle(client_names)
 
@@ -40,9 +40,9 @@ def run_single_case(
 
     # create small batches
     clients_batched_dic = {}
-    clients_batched_dic["NO_SELECTION"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_noisy_clients, sample_indices)
-    clients_batched_dic["TRUFLAAS"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_noisy_clients, sample_indices)
-    clients_batched_dic["TRUSTFED"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_noisy_clients, sample_indices)
+    clients_batched_dic["NO_SELECTION"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_no_rares, percentage_no_rares_clients, sample_indices)
+    clients_batched_dic["TRUFLAAS"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_no_rares, percentage_no_rares_clients, sample_indices)
+    clients_batched_dic["TRUSTFED"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_no_rares, percentage_no_rares_clients, sample_indices)
 
     global_model = {}
     global_model["NO_SELECTION"] : keras.Model = utils.get_model(input_shape, nb_classes)
@@ -255,42 +255,46 @@ def run_single_case(
 if __name__ == "__main__":
     #initialize global model
 
-    # experiments 1 --------------------------------------- 
-    # reducted clients
+    # experiments 2 --------------------------------------- 
     experiment_name = "exp2"
     how_small_percentage = 0.01
     runs = [
         {
-            "percentage_noisy_clients": 1
+            "percentage_no_rares_clients": 0
         },
         {
-            "percentage_noisy_clients": 0.9
+            "percentage_no_rares_clients": 0.1
         },
         {
-            "percentage_noisy_clients": 0.75
+            "percentage_no_rares_clients": 0.25
         }
     ]
 
     df = utils.load_data()
-    df_malicious = custom_extension.create_noisy_df(df = df)
+    df_no_rare = custom_extension.remove_rare_cases_from_df(df)
+    df_only_rare = custom_extension.get_rare_cases_from_df(df)
     X_train, y_train, X_test, y_test, label_encoder = utils.split_df(df)
-    X_train_malicious, y_train_malicious, X_test_malicious, y_test_malicious, label_encoder_malicious = utils.split_df(df_malicious)
+    X_train_no_rare, y_train_no_rare, X_test_no_rare, y_test_no_rare, label_encoder_no_rare = utils.split_df(df_no_rare)
+    X_train_only_rare, y_train_only_rare, X_test_only_rare, y_test_only_rare, label_encoder_only_rare = utils.split_df(df_only_rare)
 
     input_shape = X_train.shape[1:]
     nb_classes = len(label_encoder.classes_)
     class_weights = utils.get_class_weights(y_train)
 
     y_test = utils.convert_to_categorical(y_test, nb_classes)
+    y_test_only_rare = utils.convert_to_categorical(y_test_only_rare, nb_classes)
 
     # reduce test set size ----------------------------------------------------- LOOK HERE
     X_test_reduced, y_test_reduced = custom_extension.sample_test(X_test, y_test, 0.2)
+    X_test_reduced_only_rare, y_test_reduced_only_rare = custom_extension.sample_test(X_test_only_rare, y_test_only_rare, 0.2)
 
     test_batched_overall = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
     test_batched_reduced = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
+    test_batched_reduced_only_rare = tf.data.Dataset.from_tensor_slices((X_test_reduced_only_rare, y_test_reduced_only_rare)).batch(len(y_test_reduced_only_rare))
 
     for r in runs:
-        _percentage_malicious_clients = r["percentage_noisy_clients"]
-        print("percentage_noisy_clients: ", _percentage_malicious_clients)
+        _percentage_no_rares_clients = r["percentage_no_rares_clients"]
+        print("percentage_no_rares_clients: ", _percentage_no_rares_clients)
         print("experiment_name: ", experiment_name)
         print("how_small_percentage: ", how_small_percentage)
         run_single_case(experiment_name = experiment_name,
@@ -298,11 +302,11 @@ if __name__ == "__main__":
                         X_train = X_train, 
                         y_train = y_train, 
 
-                        X_train_malicious = X_train_malicious,
-                        y_train_malicious = y_train_malicious,
+                        X_train_no_rare = X_train_no_rare,
+                        y_train_no_rare = y_train_no_rare,
 
                         how_small_percentage = how_small_percentage,
-                        percentage_noisy_clients = _percentage_malicious_clients, 
+                        percentage_no_rares_clients = _percentage_no_rares_clients, 
                         input_shape=input_shape, 
                         nb_classes=nb_classes, 
                         class_weights=class_weights, 

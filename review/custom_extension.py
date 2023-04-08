@@ -17,26 +17,45 @@ def create_small_batches(clients_batched_standard, percentage_how_many_small, sa
             new_batches_with_small_clients[client_name] = clients_batched_standard[client_name]
     return new_batches_with_small_clients
 
-def create_noisy_batches(clients_batched_original, clients_batches_malicous, percentage_how_many_noisy, sample_indices):
+def create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_how_many_noisy, sample_indices):
     # to run faster every client is how_small_percentage times smaller
-    how_many_small = 1
-    number_of_clients = len(clients_batched_original.keys())
+    number_of_clients = len(clients_batches_original.keys())
     how_many_noisy = int(number_of_clients * percentage_how_many_noisy)
     new_batches_with_malicious_clients = {}
 
     # make how_many_noisy clients noisy
-    for index, client_name in enumerate(number_of_clients):
+    for index, client_name in enumerate(clients_batches_original.keys()):
         # malicious clients
         if index in range(how_many_noisy):
             new_batches_with_malicious_clients[client_name] = clients_batches_malicous[client_name]
         else:
-            new_batches_with_malicious_clients[client_name] = clients_batched_original[client_name]
+            new_batches_with_malicious_clients[client_name] = clients_batches_original[client_name]
 
     # reduce the size of all clients
     for client_name in new_batches_with_malicious_clients.keys():
         new_batches_with_malicious_clients[client_name] = [new_batches_with_malicious_clients[client_name][index] for index in sample_indices]
 
     return new_batches_with_malicious_clients
+
+def create_batches_with_no_rares(clients_batches_original, clients_batches_no_rares, percentage_how_many_no_rares, sample_indices):
+    # to run faster every client is how_small_percentage times smaller
+    number_of_clients = len(clients_batches_original.keys())
+    how_many_no_rares = int(number_of_clients * percentage_how_many_no_rares)
+    new_batches_with_no_rares_clients = {}
+
+     # make how_many_noisy clients noisy
+    for index, client_name in enumerate(clients_batches_original.keys()):
+        # malicious clients
+        if index in range(how_many_no_rares):
+            new_batches_with_no_rares_clients[client_name] = clients_batches_no_rares[client_name]
+        else:
+            new_batches_with_no_rares_clients[client_name] = clients_batches_original[client_name]
+
+    # reduce the size of all clients
+    for client_name in new_batches_with_no_rares_clients.keys():
+        new_batches_with_no_rares_clients[client_name] = [new_batches_with_no_rares_clients[client_name][index] for index in sample_indices]
+
+    return new_batches_with_no_rares_clients
 
 def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor):
     if mode != "TRUFLAAS" and mode != "TRUSTFED":

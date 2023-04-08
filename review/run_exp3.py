@@ -255,8 +255,7 @@ def run_single_case(
 if __name__ == "__main__":
     #initialize global model
 
-    # experiments 1 --------------------------------------- 
-    # reducted clients
+    # experiments 3 --------------------------------------- 
     experiment_name = "exp3"
     how_small_percentage = 0.01
     runs = [
