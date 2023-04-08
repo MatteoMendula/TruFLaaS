@@ -57,14 +57,15 @@ def create_batches_with_no_rares(clients_batches_original, clients_batches_no_ra
 
     return new_batches_with_no_rares_clients
 
-def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor):
-    if mode != "TRUFLAAS" and mode != "TRUSTFED":
+def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor, test_batch_rares = False):
+    if mode != "TRUFLAAS" and mode != "TRUSTFED" and mode != "UNION" and mode != "INTERSECTION":
         print("[select_best_clients] mode error")
         return None
 
     client_names = list(client_set.keys())
     selected_clients = {}
     evaluation_scores = {}
+    evaluation_scores_rares = {}
     global_count = utils.calculate_global_count(client_set)
 
     local_weight_list = list()
@@ -75,15 +76,28 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
         for(x_batch, y_batch) in test_batched:
             g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
             evaluation_scores[client_name] = g_accuracy
+            if test_batch_rares != False:
+                g_loss_rares, g_accuracy_rares, g_precision_rares, g_recall_rares, g_f1_rares = utils.test_model(x_batch, y_batch, model, comm_round, "local rates")
+                evaluation_scores_rares[client_name] = g_accuracy_rares
 
     evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
     evaluation_scores_std = np.std(list(evaluation_scores.values()))
 
+    if test_batch_rares != False:
+        evaluation_scores_mean_rares = np.mean(list(evaluation_scores_rares.values()))
+        evaluation_scores_std_rares = np.std(list(evaluation_scores_rares.values()))
+
     for client_name in evaluation_scores.keys():
         acc_score = evaluation_scores[client_name]
+        acc_score_rares = evaluation_scores_rares[client_name]
         if (mode == "TRUFLAAS" and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std):
             selected_clients[client_name] = client_set[client_name]
         elif (mode == "TRUSTFED" and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std and acc_score < evaluation_scores_mean + std_factor * evaluation_scores_std):
+            selected_clients[client_name] = client_set[client_name]
+        # here intersection and union switched because we are selecting the clients instead of excluding them
+        elif (mode == "INTERSECTION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares or acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):
+            selected_clients[client_name] = client_set[client_name]
+        elif (mode == "UNION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std))):  
             selected_clients[client_name] = client_set[client_name]
 
     print("selected clients: ", selected_clients.keys())
@@ -133,17 +147,24 @@ def save_graphs(dict_of_metrics, experiment_name, special_clients):
         plt.savefig("./results/{}/{}/{}.png".format(experiment_name, case_name, metric))
         # plt.show()
 
-def save_csv(dict_of_metrics, experiment_name, special_clients):
+def save_csv(dict_of_metrics, experiment_name, special_clients, is_union_intersection = False):
     print("dict_of_metrics", dict_of_metrics)
     print("experiment_name", experiment_name)
     print("special_clients", special_clients)
 
     case_name = "reduced_{}".format(str(special_clients))
-    header = ["round","loss_no_selection", "loss_truflaas", "loss_trustfed"]
-    header += ["accuracy_no_selection", "accuracy_truflaas", "accuracy_trustfed"]
-    header += ["precision_no_selection", "precision_truflaas", "precision_trustfed"]
-    header += ["recall_no_selection", "recall_truflaas", "recall_trustfed"]
-    header += ["f1_no_selection", "f1_truflaas", "f1_trustfed"]
+    if is_union_intersection != False:
+        header = ["round","loss_no_selection", "loss_truflaas", "loss_trustfed"]
+        header += ["accuracy_no_selection", "accuracy_truflaas", "accuracy_trustfed"]
+        header += ["precision_no_selection", "precision_truflaas", "precision_trustfed"]
+        header += ["recall_no_selection", "recall_truflaas", "recall_trustfed"]
+        header += ["f1_no_selection", "f1_truflaas", "f1_trustfed"]
+    else:
+        header = ["round","loss_no_selection", "loss_union", "loss_intersection"]
+        header += ["accuracy_no_selection", "accuracy_union", "accuracy_intersection"]
+        header += ["precision_no_selection", "precision_union", "precision_intersection"]
+        header += ["recall_no_selection", "recall_union", "recall_intersection"]
+        header += ["f1_no_selection", "f1_union", "f1_intersection"]
     line = ', '.join(str(e) for e in header)
     with open("./results/{}/{}/out.csv".format(experiment_name, case_name), "w") as file:
         file.write(line+"\n")
