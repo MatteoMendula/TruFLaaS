@@ -87,7 +87,6 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
             model = client_set[client_name]["model"]
             for(x_batch, y_batch) in test_batch_rares:
                 threads_rares[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local-rares{}".format(i), client_name, evaluation_scores_rares)) 
-                threads_rares[i].start()
 
     for i in range(len(threads)):
         threads[i].start()
