@@ -148,27 +148,27 @@ def select_all_clients(client_set, test_batched, comm_round):
     # -----------------------------
     # parallel version
     # -----------------------------
-    # for i, client_name in enumerate(client_names):  
-    #     model = client_set[client_name]["model"]
-    #     for(x_batch, y_batch) in test_batched:
-    #         threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i)))     
-    #         threads[i].start()
+    for i, client_name in enumerate(client_names):  
+        model = client_set[client_name]["model"]
+        for(x_batch, y_batch) in test_batched:
+            threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i)))     
+            threads[i].start()
 
-    # for i in range(constants.num_clients):
-    #     threads[i].join() 
+    for i in range(constants.num_clients):
+        threads[i].join() 
 
 
     # -----------------------------
     # sequential version
     # -----------------------------
-    for client_name in client_names:
-        model = client_set[client_name]["model"]
-        for(x_batch, y_batch) in test_batched:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
+    # for client_name in client_names:
+    #     model = client_set[client_name]["model"]
+    #     for(x_batch, y_batch) in test_batched:
+    #         g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
 
-    for client_name in client_set.keys():
-        model_weights = utils.get_model_weights(client_set, client_name, global_count) 
-        local_weight_list.append(model_weights)
+    # for client_name in client_set.keys():
+    #     model_weights = utils.get_model_weights(client_set, client_name, global_count) 
+    #     local_weight_list.append(model_weights)
 
     return local_weight_list
 
