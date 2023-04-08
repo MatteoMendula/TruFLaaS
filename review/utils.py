@@ -24,9 +24,43 @@ from net import INCEPTION_Block
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 
-def read_data():
+def split_df(df):
+    # read data from pickle
+    df = df.sample(frac=1).reset_index(drop=True)
 
-    # try to read data from pickle file
+    # split data into train and test
+    train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df["type"])
+
+    features = list(train_df.columns)
+    features.remove("type")
+
+    label_encoder = LabelEncoder()
+    train_df["type"] = label_encoder.fit_transform(train_df["type"])
+    test_df["type"] = label_encoder.transform(test_df["type"])
+
+    scaler = MinMaxScaler()
+    train_df[features] = scaler.fit_transform(train_df[features])
+    test_df[features] = scaler.transform(test_df[features])
+
+    X_train = train_df[features].values
+    y_train = train_df["type"].values
+
+    X_test = test_df[features].values
+    y_test = test_df["type"].values
+
+    clf = ExtraTreesClassifier(n_estimators=50, n_jobs=-1)
+    clf = clf.fit(X_train, y_train)
+    model = SelectFromModel(clf, prefit=True)
+    X_train = model.transform(X_train)
+    X_test = model.transform(X_test)
+
+    X_train = X_train.reshape((-1, X_train.shape[-1], 1))
+    X_test = X_test.reshape((-1, X_test.shape[-1], 1))
+
+    return X_train, y_train, X_test, y_test, label_encoder
+
+def load_data():
+        # try to read data from pickle file
     try:
         df = pd.read_pickle("./data/df.pkl")
         print("Data loaded from pickle file")
@@ -64,41 +98,7 @@ def read_data():
         
         df.to_pickle("./data/df.pkl")
     
-    # read data from pickle
-
-
-    df = df.sample(frac=1).reset_index(drop=True)
-
-    # split data into train and test
-    train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df["type"])
-
-    features = list(train_df.columns)
-    features.remove("type")
-
-    label_encoder = LabelEncoder()
-    train_df["type"] = label_encoder.fit_transform(train_df["type"])
-    test_df["type"] = label_encoder.transform(test_df["type"])
-
-    scaler = MinMaxScaler()
-    train_df[features] = scaler.fit_transform(train_df[features])
-    test_df[features] = scaler.transform(test_df[features])
-
-    X_train = train_df[features].values
-    y_train = train_df["type"].values
-
-    X_test = test_df[features].values
-    y_test = test_df["type"].values
-
-    clf = ExtraTreesClassifier(n_estimators=50, n_jobs=-1)
-    clf = clf.fit(X_train, y_train)
-    model = SelectFromModel(clf, prefit=True)
-    X_train = model.transform(X_train)
-    X_test = model.transform(X_test)
-
-    X_train = X_train.reshape((-1, X_train.shape[-1], 1))
-    X_test = X_test.reshape((-1, X_test.shape[-1], 1))
-
-    return X_train, y_train, X_test, y_test, label_encoder
+    return df
 
 def get_class_weights(y_train):
 

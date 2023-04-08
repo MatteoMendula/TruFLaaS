@@ -5,35 +5,28 @@ import custom_extension
 if __name__ == "__main__":
     #initialize global model
 
-    X_train, y_train, X_test, y_test, label_encoder = utils.read_data()
+    import pandas as pd
 
-    input_shape = X_train.shape[1:]
-    nb_classes = len(label_encoder.classes_)
-    class_weights = utils.get_class_weights(y_train)
+    df = pd.read_pickle("./data/df.pkl")
+    df["type"].value_counts()
+    df_only_data = df.copy()
+    df_only_data.drop(['type'], axis = 1, inplace = True) 
+    print(df)
+    print(df_only_data)
 
-    # y_test = utils.convert_to_categorical(y_test, nb_classes)
-    print(y_test)
-    print("-----------------")
-    print(len(y_test))
-    print("-----------------")
-    print(y_test[0])
-    print("-----------------")
-    
-    y_test = utils.convert_to_categorical(y_test, nb_classes)
-    print(y_test)
-    print("-----------------")
-    print(len(y_test))
-    print("-----------------")
-    print(y_test[0])
-    print("-----------------")
+    print(df.shape)
+    print(df_only_data.shape)
 
-    X_test, y_test = custom_extension.sample_test(X_test, y_test, 1000)
-    
-    print(y_test)
-    print("-----------------")
-    print(len(y_test))
-    print("-----------------")
-    print(y_test[0])
-    print("-----------------")
-    test_batched = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
-    print(len(test_batched))
+    import numpy as np
+    mu, sigma = 0, 0.5
+    noise = np.random.normal(mu, sigma, df_only_data.shape) 
+
+    print(noise.shape)
+    noisy_df = df_only_data + noise
+    print(noisy_df)
+
+
+    # noisy_df.insert(0, "type", list(df["type"])) 
+    noisy_df["type"] = df["type"]
+    print(df["type"].value_counts())
+    print(noisy_df["type"].value_counts())

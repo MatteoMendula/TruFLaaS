@@ -10,23 +10,17 @@ import numpy as np
 
 DEBUG = True
 
-if __name__ == "__main__":
-    #initialize global model
-
-    X_train, y_train, X_test, y_test, label_encoder = utils.read_data()
-
-    input_shape = X_train.shape[1:]
-    nb_classes = len(label_encoder.classes_)
-    class_weights = utils.get_class_weights(y_train)
-
-    y_test = utils.convert_to_categorical(y_test, nb_classes)
-
-    # reduce test set size ----------------------------------------------------- LOOK HERE
-    X_test_reduced, y_test_reduced = custom_extension.sample_test(X_test, y_test, 0.2)
-
-    test_batched_overall = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
-    test_batched_reduced = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
-
+def run_single_case(
+        experiment_name, 
+        X_train, 
+        y_train, 
+        how_small_percentage,
+        percentage_small_clients, 
+        input_shape, 
+        nb_classes, 
+        class_weights,
+        test_batched_overall, 
+        test_batched_reduced):
     print("Creating clients...")
     clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
     client_names = list(clients_batched_original.keys())
@@ -34,14 +28,14 @@ if __name__ == "__main__":
 
     # this is meant to give to all clients the same samples indexes
     original_sample_size = len(clients_batched_original[client_names[0]])
-    small_sample_size = int(original_sample_size * constants.how_small_percentage)
+    small_sample_size = int(original_sample_size * how_small_percentage)
     sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
-    
+
     # create small batches
     clients_batched_dic = {}
-    clients_batched_dic["NO_SELECTION"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = constants.percentage_small_clients, sample_indices = sample_indices)
-    clients_batched_dic["TRUFLAAS"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = constants.percentage_small_clients, sample_indices = sample_indices)
-    clients_batched_dic["TRUSTFED"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = constants.percentage_small_clients, sample_indices = sample_indices)
+    clients_batched_dic["NO_SELECTION"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = percentage_small_clients, sample_indices = sample_indices)
+    clients_batched_dic["TRUFLAAS"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = percentage_small_clients, sample_indices = sample_indices)
+    clients_batched_dic["TRUSTFED"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = percentage_small_clients, sample_indices = sample_indices)
 
     global_model = {}
     global_model["NO_SELECTION"] : keras.Model = utils.get_model(input_shape, nb_classes)
@@ -59,9 +53,6 @@ if __name__ == "__main__":
             print("{}_no_selection".format(client_name), len(clients_batched_dic["NO_SELECTION"][client_name]))
             print("{}TRUFLAAS".format(client_name), len(clients_batched_dic["TRUFLAAS"][client_name]))
             print("{}TRUSTFED".format(client_name), len(clients_batched_dic["TRUSTFED"][client_name]))
-
-    del X_train, y_train
-    del X_test, y_test
 
     client_set : dict = {}
     client_set["NO_SELECTION"] : dict = {k: {} for k in client_names}
@@ -246,9 +237,62 @@ if __name__ == "__main__":
     print("-------------------- --------------------- ---------------------")
     print("saving and showing graphs")
 
-    custom_extension.save_graphs(testing_metrics)
+    custom_extension.save_graphs(testing_metrics, experiment_name, percentage_small_clients)
 
     print("-------------------- --------------------- ---------------------")
     print("saving csv file")
 
-    custom_extension.save_csv(testing_metrics)
+    custom_extension.save_csv(testing_metrics, experiment_name, percentage_small_clients)
+
+
+if __name__ == "__main__":
+    #initialize global model
+
+    # experiments 1 --------------------------------------- 
+    # reducted clients
+    experiment_name = "exp1"
+    how_small_percentage = 0.01
+    runs = [
+        {
+            "percentage_small_clients": 1
+        },
+        {
+            "percentage_small_clients": 0.9
+        },
+        {
+            "percentage_small_clients": 0.75
+        }
+    ]
+
+    df = utils.load_data()
+    X_train, y_train, X_test, y_test, label_encoder = utils.split_df(df)
+
+    input_shape = X_train.shape[1:]
+    nb_classes = len(label_encoder.classes_)
+    class_weights = utils.get_class_weights(y_train)
+
+    y_test = utils.convert_to_categorical(y_test, nb_classes)
+
+    # reduce test set size ----------------------------------------------------- LOOK HERE
+    X_test_reduced, y_test_reduced = custom_extension.sample_test(X_test, y_test, 0.2)
+
+    test_batched_overall = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
+    test_batched_reduced = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
+
+    for r in runs:
+        _percentage_small_clients = r["percentage_small_clients"]
+        print("percentage_small_clients: ", _percentage_small_clients)
+        print("experiment_name: ", experiment_name)
+        print("how_small_percentage: ", how_small_percentage)
+        run_single_case(experiment_name = experiment_name,
+            
+                        X_train = X_train, 
+                        y_train = y_train, 
+
+                        how_small_percentage = how_small_percentage,
+                        percentage_small_clients = _percentage_small_clients, 
+                        input_shape=input_shape, 
+                        nb_classes=nb_classes, 
+                        class_weights=class_weights, 
+                        test_batched_overall=test_batched_overall, 
+                        test_batched_reduced=test_batched_reduced)

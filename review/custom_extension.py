@@ -17,6 +17,27 @@ def create_small_batches(clients_batched_standard, percentage_how_many_small, sa
             new_batches_with_small_clients[client_name] = clients_batched_standard[client_name]
     return new_batches_with_small_clients
 
+def create_noisy_batches(clients_batched_original, clients_batches_malicous, percentage_how_many_noisy, sample_indices):
+    # to run faster every client is how_small_percentage times smaller
+    how_many_small = 1
+    number_of_clients = len(clients_batched_original.keys())
+    how_many_noisy = int(number_of_clients * percentage_how_many_noisy)
+    new_batches_with_malicious_clients = {}
+
+    # make how_many_noisy clients noisy
+    for index, client_name in enumerate(number_of_clients):
+        # malicious clients
+        if index in range(how_many_noisy):
+            new_batches_with_malicious_clients[client_name] = clients_batches_malicous[client_name]
+        else:
+            new_batches_with_malicious_clients[client_name] = clients_batched_original[client_name]
+
+    # reduce the size of all clients
+    for client_name in new_batches_with_malicious_clients.keys():
+        new_batches_with_malicious_clients[client_name] = [new_batches_with_malicious_clients[client_name][index] for index in sample_indices]
+
+    return new_batches_with_malicious_clients
+
 def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor):
     if mode != "TRUFLAAS" and mode != "TRUSTFED":
         print("[select_best_clients] mode error")
@@ -73,27 +94,39 @@ def select_all_clients(client_set, test_batched, comm_round):
 
     return local_weight_list
 
-def save_graphs(dict_of_metrics):
+def save_graphs(dict_of_metrics, experiment_name, special_clients):
+    print("dict_of_metrics", dict_of_metrics)
+    print("experiment_name", experiment_name)
+    print("special_clients", special_clients)
+
+    case_name = "reduced_{}".format(str(special_clients))
     colors = {
         "TRUFLAAS": "red",
         "TRUSTFED": "blue",
         "NO_SELECTION": "green"
     }
     for metric in constants.testing_metrics:
+        plt.clf()
         for case in dict_of_metrics.keys():
+            # case = "TRUFLAAS"/"TRUSTFED"/"NO_SELECTION"
             plt.plot(dict_of_metrics[case][metric], label="{}_{}".format(case, metric), color=colors[case])
         plt.legend()
-        plt.savefig("./results/{}.png".format(metric))
-        plt.show()
+        plt.savefig("./results/{}/{}/{}.png".format(experiment_name, case_name, metric))
+        # plt.show()
 
-def save_csv(dict_of_metrics):
+def save_csv(dict_of_metrics, experiment_name, special_clients):
+    print("dict_of_metrics", dict_of_metrics)
+    print("experiment_name", experiment_name)
+    print("special_clients", special_clients)
+
+    case_name = "reduced_{}".format(str(special_clients))
     header = ["round","loss_no_selection", "loss_truflaas", "loss_trustfed"]
     header += ["accuracy_no_selection", "accuracy_truflaas", "accuracy_trustfed"]
     header += ["precision_no_selection", "precision_truflaas", "precision_trustfed"]
     header += ["recall_no_selection", "recall_truflaas", "recall_trustfed"]
     header += ["f1_no_selection", "f1_truflaas", "f1_trustfed"]
     line = ', '.join(str(e) for e in header)
-    with open("./results/out.csv", "w") as file:
+    with open("./results/{}/{}/out.csv".format(experiment_name, case_name), "w") as file:
         file.write(line+"\n")
         for round in range(constants.comms_round):
             line = "{}, ".format(round)
@@ -108,3 +141,18 @@ def sample_test(X_test, y_test, sample_percentage=0.2):
     X_test_sample = X_test[sample_indices]
     y_test_sample = y_test[sample_indices]
     return X_test_sample, y_test_sample
+
+def get_rare_cases_from_df(df):
+    return df[df["type"] == "gafgyt_scan"]
+
+def remove_rare_cases_from_df(df):
+    return df[df["type"] != "gafgyt_scan"]
+
+def create_noisy_df(df):
+    df_only_data = df.copy()
+    df_only_data.drop(['type'], axis = 1, inplace = True) 
+    mu, sigma = 0, 0.5
+    noise = np.random.normal(mu, sigma, df_only_data.shape) 
+    noisy_df = df_only_data + noise
+    noisy_df['type'] = df['type']
+    return noisy_df
