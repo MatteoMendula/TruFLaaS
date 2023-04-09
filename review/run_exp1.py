@@ -179,9 +179,9 @@ def run_single_case(
         for i in range(constants.num_clients):
             threads["TRUSTFED"][i].join()
 
-        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], test_batched_reduced, comm_round)
-        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched_reduced, comm_round, mode = "TRUFLAAS")
-        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], test_batched_reduced, comm_round, mode = "TRUSTFED")
+        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], test_batched_reduced, comm_round, experiment_name = experiment_name)
+        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched_reduced, comm_round, mode = "TRUFLAAS", experiment_name = experiment_name)
+        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], test_batched_reduced, comm_round, mode = "TRUSTFED", experiment_name = experiment_name)
 
         #to get the average over all the local model, we simply calculate the average of the sum of local weights
         average_weights["NO_SELECTION"] : list = utils.average_model_weights(local_weight_list["NO_SELECTION"])
@@ -195,7 +195,7 @@ def run_single_case(
 
         # testing global model with NO_SELECTION
         for(x_batch, y_batch) in test_batched_overall:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["NO_SELECTION"], comm_round, "global no_selection")
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["NO_SELECTION"], comm_round, "[{}] global NO_SELECTION".format(experiment_name))
             testing_metrics["NO_SELECTION"]["loss"].append(g_loss)
             testing_metrics["NO_SELECTION"]["accuracy"].append(g_accuracy)
             testing_metrics["NO_SELECTION"]["precision"].append(g_precision)
@@ -209,7 +209,7 @@ def run_single_case(
             
         # testing global model with TRUFLAAS
         for (x_batch, y_batch) in test_batched_overall:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUFLAAS"], comm_round, "global truflaas")
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUFLAAS"], comm_round, "[{}] global TRUFLAAS".format(experiment_name))
             testing_metrics["TRUFLAAS"]["loss"].append(g_loss)
             testing_metrics["TRUFLAAS"]["accuracy"].append(g_accuracy)
             testing_metrics["TRUFLAAS"]["precision"].append(g_precision)
@@ -223,7 +223,7 @@ def run_single_case(
 
         # testing global model with TRUSTFED
         for (x_batch, y_batch) in test_batched_overall:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUSTFED"], comm_round, "global trustfed")
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUSTFED"], comm_round, "[{}] global TRUSTFED".format(experiment_name))
             testing_metrics["TRUSTFED"]["loss"].append(g_loss)
             testing_metrics["TRUSTFED"]["accuracy"].append(g_accuracy)
             testing_metrics["TRUSTFED"]["precision"].append(g_precision)
@@ -238,18 +238,6 @@ def run_single_case(
     print("Best Accuracy Overall NO_SELECTION: ", best_accuracy_overall["NO_SELECTION"])
     print("Best Accuracy Overall TRUFLAAS: ", best_accuracy_overall["TRUFLAAS"])
     print("Best Accuracy Overall TRUSTFED: ", best_accuracy_overall["TRUSTFED"])
-
-    for round in range(constants.comms_round):
-        print("Round: ", round)
-        print("NO_SELECTION: ", testing_metrics["NO_SELECTION"]["accuracy"][round])
-        print("TRUFLAAS: ", testing_metrics["TRUFLAAS"]["accuracy"][round])
-        print("TRUSTFED: ", testing_metrics["TRUSTFED"]["accuracy"][round])
-
-    print("-------------------- --------------------- ---------------------")
-
-    print(testing_metrics["NO_SELECTION"])
-    print(testing_metrics["TRUFLAAS"])
-    print(testing_metrics["TRUSTFED"])
 
     print("-------------------- --------------------- ---------------------")
     print("saving and showing graphs")
@@ -302,9 +290,11 @@ if __name__ == "__main__":
         special_client_amount = int(len(client_names) * _percentage_small_clients)
         random.shuffle(client_names)
         special_clients = client_names[:special_client_amount]
+        print("--- --- --- STARTING NEW RUN --- --- ---")
         print("percentage_small_clients: ", _percentage_small_clients)
         print("experiment_name: ", experiment_name)
         print("how_small_percentage: ", how_small_percentage)
+        print(" --- --- --- ---- --- -- --- ---- ------ ---")
         run_single_case(experiment_name = experiment_name,
                         
                         client_names=client_names,

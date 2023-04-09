@@ -5,6 +5,7 @@ import csv
 import constants
 from threading import Thread
 import tensorflow as tf
+import random
 
 def create_small_batches(clients_batched_standard, special_clients, original_sample_size, small_sample_size):
     new_batches_with_small_clients = {}
@@ -59,7 +60,7 @@ def create_batches_with_no_rares(clients_batches_original, clients_batches_no_ra
 
     return new_batches_with_no_rares_clients
 
-def select_best_clients(client_set : dict, test_batched, comm_round, mode, test_batch_rares = None):
+def select_best_clients(client_set : dict, test_batched, comm_round, mode, experiment_name, test_batch_rares = None):
     if mode != "TRUFLAAS" and mode != "TRUSTFED" and mode != "UNION" and mode != "INTERSECTION":    
         print("[select_best_clients] mode error")
         return None
@@ -77,7 +78,7 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, test_
 
     print("TESTING: ", mode)
     for i, client_name_tester_name in enumerate(client_names):
-        threads[i] = Thread(target=test_other_clients, args=(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes))
+        threads[i] = Thread(target=test_other_clients, args=(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes, experiment_name))
         threads[i].start()
 
     for i in range(len(threads)):
@@ -103,7 +104,7 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, test_
 
     return local_weight_list
 
-def select_all_clients(client_set, test_batched, comm_round):
+def select_all_clients(client_set, test_batched, comm_round, experiment_name):
     global_count = utils.calculate_global_count(client_set)
     client_names = list(client_set.keys())
 
@@ -133,16 +134,17 @@ def select_all_clients(client_set, test_batched, comm_round):
 
     # print("all threads joined")
 
+    client_name_random_pick = random.sample(list(client_set.keys()), int(len(client_set.keys())*0.7))
 
     # -----------------------------
     # sequential version
     # -----------------------------
-    for i, client_name in enumerate(client_names):  
+    for i, client_name in enumerate(client_name_random_pick):  
         model = client_set[client_name]["model"]
         test_batched_client = client_set[client_name]["testing"]
         # for(x_batch, y_batch) in test_batched:
         for(x_batch, y_batch) in test_batched_client:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local{}".format(i))
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "[{}] local{}".format(experiment_name, i))
 
     for client_name in client_set.keys():
         model_weights = utils.get_model_weights(client_set, client_name, global_count) 
@@ -150,12 +152,12 @@ def select_all_clients(client_set, test_batched, comm_round):
 
     return local_weight_list
 
-def save_graphs(dict_of_metrics, experiment_name, special_clients):
+def save_graphs(dict_of_metrics, experiment_name, percentage_small_clients):
     print("dict_of_metrics", dict_of_metrics)
     print("experiment_name", experiment_name)
-    print("special_clients", special_clients)
+    print("percentage_small_clients", percentage_small_clients)
 
-    case_name = "reduced_{}".format(str(special_clients))
+    case_name = "reduced_{}".format(str(percentage_small_clients))
     colors = {
         "TRUFLAAS": "red",
         "TRUSTFED": "blue",
@@ -173,12 +175,12 @@ def save_graphs(dict_of_metrics, experiment_name, special_clients):
         plt.savefig("./results/{}/{}/{}.png".format(experiment_name, case_name, metric))
         # plt.show()
 
-def save_csv(dict_of_metrics, experiment_name, special_clients, is_union_intersection = False):
+def save_csv(dict_of_metrics, experiment_name, percentage_small_clients, is_union_intersection = False):
     print("dict_of_metrics", dict_of_metrics)
     print("experiment_name", experiment_name)
-    print("special_clients", special_clients)
+    print("percentage_small_clients", percentage_small_clients)
 
-    case_name = "reduced_{}".format(str(special_clients))
+    case_name = "reduced_{}".format(str(percentage_small_clients))
     if is_union_intersection != False:
         header = ["round","loss_no_selection", "loss_truflaas", "loss_trustfed"]
         header += ["accuracy_no_selection", "accuracy_truflaas", "accuracy_trustfed"]
@@ -227,7 +229,7 @@ def create_noisy_df(df):
     noisy_df['type'] = df['type']
     return noisy_df
 
-def test_other_clients(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes):
+def test_other_clients(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes, experiment_name):
     evaluation_scores = {}
     for client_name in client_names:
         # a client cannot test itself
@@ -237,7 +239,7 @@ def test_other_clients(client_set, client_names, client_name_tester_name, mode, 
         test_batched_client = client_set[client_name_tester_name]["testing"]
         # for (x_batch, y_batch) in test_batched:
         for (x_batch, y_batch) in test_batched_client:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local_{}".format(mode))
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "[{}]local_{}".format(experiment_name, mode))
             evaluation_scores[client_name] = np.round(g_loss, 3)
 
     evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
