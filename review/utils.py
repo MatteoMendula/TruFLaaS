@@ -194,7 +194,7 @@ def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
 def get_model(input_shape, nb_classes) -> tf.keras.Model:
     return tf.keras.models.Sequential(
         [
-            tf.keras.layers.Dense(64, input_dim=input_shape, activation='relu'),
+            tf.keras.layers.Dense(64, input_dim=input_shape[0], activation='relu'),
             tf.keras.layers.Dense(32, activation='relu'),
             tf.keras.layers.Dropout(0.2),
             tf.keras.layers.Dense(nb_classes, activation='softmax')
