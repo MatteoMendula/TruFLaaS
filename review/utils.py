@@ -169,7 +169,7 @@ def f1_score(y_true, y_pred):
     precision = true_positives / (predicted_positives + K.epsilon())
     recall = true_positives / (possible_positives + K.epsilon())
     f1_val = 2*(precision*recall)/(precision+recall+K.epsilon())
-    return f1_val
+    return f1_val, precision, recall
 
 def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     # Attention and Normalization
@@ -253,7 +253,7 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
 
     #fit local model with client's data
     print(f"[TRAINING] Round: {comm_round} | Client: {client_name}")
-    # client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=local_client_epochs, verbose=0, class_weight=class_weights)
+    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=local_client_epochs, verbose=0, class_weight=class_weights)
 
     #scale the model weights and add to list
     # scaling_factor = weight_scalling_factor(client_set, client_name)
@@ -270,22 +270,25 @@ def test_model(X_test, y_test,  model, comm_round, mode, client_name = None, eva
     #logits = model.predict(_X_test, batch_size=100)
     with tf.device('/cpu:0'):
         logits = model.predict(X_test)
-    loss = cce(y_test, logits)
-    y_hat = np.argmax(logits, axis=1)
-    y_true = np.argmax(y_test, axis=1)
+        loss = cce(y_test, logits)
+        y_hat = np.argmax(logits, axis=1)
+        y_true = np.argmax(y_test, axis=1)
 
-    accuracy = accuracy_score(np.argmax(y_test, axis=1), np.argmax(logits, axis=1))
-    
-    r = Recall()
-    r.update_state(y_test, logits)
-    recall = r.result().numpy()
-    
-    p = Precision()
-    p.update_state(y_test, logits)
-    precision = p.result().numpy()
-    
-    f = f1_score(y_test, logits)
-    f1 = f.numpy()
+        accuracy = accuracy_score(np.argmax(y_test, axis=1), np.argmax(logits, axis=1))
+        
+        
+        f, precision, recall = f1_score(y_test, logits)
+        f1 = f.numpy()
+        # precision = precision.numpy()
+        # recall = recall.numpy()
+
+        r = Recall()
+        r.update_state(y_test, logits)
+        recall = r.result().numpy()
+        
+        p = Precision()
+        p.update_state(y_test, logits)
+        precision = p.result().numpy()
 
     if client_name != None and evaluation_scores != None:
         # append accuracy to list

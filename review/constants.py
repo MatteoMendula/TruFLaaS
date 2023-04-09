@@ -8,7 +8,7 @@ comms_round = 10
 num_clients = 30
 local_testing_size = 0.01
 
-std_factor = 0.8
+std_factor = 1
 
 testing_metrics = ["loss", "accuracy", "precision", "recall", "f1"]
 

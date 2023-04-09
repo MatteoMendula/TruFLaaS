@@ -59,7 +59,7 @@ def create_batches_with_no_rares(clients_batches_original, clients_batches_no_ra
 
     return new_batches_with_no_rares_clients
 
-def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor, test_batch_rares = None):
+def select_best_clients(client_set : dict, test_batched, comm_round, mode, test_batch_rares = None):
     if mode != "TRUFLAAS" and mode != "TRUSTFED" and mode != "UNION" and mode != "INTERSECTION":    
         print("[select_best_clients] mode error")
         return None
@@ -73,33 +73,16 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
     # threads_rares = [None] * len(client_names)
 
     discarding_votes = {}
+    threads = [None] * len(client_names)
 
     print("TESTING: ", mode)
-    for client_name_tester_name in client_names:
-        evaluation_scores = {}
-        for client_name in client_names:
-            # a client cannot test itself
-            if client_name == client_name_tester_name:
-                continue
-            model = client_set[client_name]["model"]
-            test_batched_client = client_set[client_name_tester_name]["testing"]
-            # for (x_batch, y_batch) in test_batched:
-            for (x_batch, y_batch) in test_batched_client:
-                g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local_{}".format(mode))
-                evaluation_scores[client_name] = g_loss
+    for i, client_name_tester_name in enumerate(client_names):
+        threads[i] = Thread(target=test_other_clients, args=(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes))
+        threads[i].start()
 
-        evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
-        evaluation_scores_std = np.std(list(evaluation_scores.values()))
-
-        for client_name in client_names:
-            if client_name == client_name_tester_name:
-                continue
-            if client_name not in discarding_votes.keys():
-                discarding_votes[client_name] = 0
-            if mode == "TRUFLAAS" and evaluation_scores[client_name] < evaluation_scores_mean - std_factor * evaluation_scores_std:
-                discarding_votes[client_name] += 1
-            elif mode == "TRUSTFED" and (evaluation_scores[client_name] < evaluation_scores_mean - std_factor * evaluation_scores_std or evaluation_scores[client_name] > evaluation_scores_mean + std_factor * evaluation_scores_std):
-                discarding_votes[client_name] += 1
+    for i in range(len(threads)):
+        threads[i].join() 
+    
 
     for client_name in discarding_votes.keys():
         if discarding_votes[client_name] > int(len(client_names)/2):
@@ -243,3 +226,29 @@ def create_noisy_df(df):
     noisy_df = df_only_data + noise
     noisy_df['type'] = df['type']
     return noisy_df
+
+def test_other_clients(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes):
+    evaluation_scores = {}
+    for client_name in client_names:
+        # a client cannot test itself
+        if client_name == client_name_tester_name:
+            continue
+        model = client_set[client_name]["model"]
+        test_batched_client = client_set[client_name_tester_name]["testing"]
+        # for (x_batch, y_batch) in test_batched:
+        for (x_batch, y_batch) in test_batched_client:
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local_{}".format(mode))
+            evaluation_scores[client_name] = np.round(g_loss, 3)
+
+    evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
+    evaluation_scores_std = np.std(list(evaluation_scores.values()))
+
+    for client_name in client_names:
+        if client_name == client_name_tester_name:
+            continue
+        if client_name not in discarding_votes.keys():
+            discarding_votes[client_name] = 0
+        if mode == "TRUFLAAS" and evaluation_scores[client_name] < evaluation_scores_mean - constants.std_factor * evaluation_scores_std:
+            discarding_votes[client_name] += 1
+        elif mode == "TRUSTFED" and (evaluation_scores[client_name] < evaluation_scores_mean - constants.std_factor * evaluation_scores_std or evaluation_scores[client_name] > evaluation_scores_mean + constants.std_factor * evaluation_scores_std):
+            discarding_votes[client_name] += 1
