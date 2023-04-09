@@ -12,21 +12,21 @@ DEBUG = False
 
 def run_single_case(
         experiment_name, 
+        client_names,
         X_train, 
         y_train, 
         X_test,
         y_test,
         how_small_percentage,
-        percentage_small_clients, 
+        special_clients, 
         input_shape, 
         nb_classes, 
         class_weights,
         test_batched_overall, 
         test_batched_reduced):
     print("Creating clients...")
-    clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')    
+    clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, client_names)    
     client_names = list(clients_batched_original.keys())
-    random.shuffle(client_names)
 
     # this is meant to give to all clients the same samples indexes
     original_sample_size = len(clients_batched_original[client_names[0]])
@@ -39,9 +39,9 @@ def run_single_case(
 
     # create small batches
     clients_batched_dic = {}
-    clients_batched_dic["NO_SELECTION"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = percentage_small_clients, sample_indices = sample_indices)
-    clients_batched_dic["TRUFLAAS"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = percentage_small_clients, sample_indices = sample_indices)
-    clients_batched_dic["TRUSTFED"] = custom_extension.create_small_batches(clients_batched_original, percentage_how_many_small = percentage_small_clients, sample_indices = sample_indices)
+    clients_batched_dic["NO_SELECTION"] = custom_extension.create_small_batches(clients_batched_original, special_clients = special_clients, original_sample_size = original_sample_size, small_sample_size = small_sample_size)
+    clients_batched_dic["TRUFLAAS"] = custom_extension.create_small_batches(clients_batched_original, special_clients = special_clients, original_sample_size = original_sample_size, small_sample_size = small_sample_size)
+    clients_batched_dic["TRUSTFED"] = custom_extension.create_small_batches(clients_batched_original, special_clients = special_clients, original_sample_size = original_sample_size, small_sample_size = small_sample_size)
 
     global_model = {}
     global_model["NO_SELECTION"] : keras.Model = utils.get_model(input_shape, nb_classes)
@@ -282,6 +282,8 @@ if __name__ == "__main__":
     df = utils.load_data()
     X_train, y_train, X_test, y_test, label_encoder = utils.split_df(df)
 
+    client_names = ['{}_{}'.format("client", i+1) for i in range(constants.num_clients)]
+
     input_shape = X_train.shape[1:]
     nb_classes = len(label_encoder.classes_)
     class_weights = utils.get_class_weights(y_train)
@@ -296,18 +298,23 @@ if __name__ == "__main__":
 
     for r in runs:
         _percentage_small_clients = r["percentage_small_clients"]
+        special_client_amount = int(len(client_names) * _percentage_small_clients)
+        random.shuffle(client_names)
+        special_clients = client_names[:special_client_amount]
         print("percentage_small_clients: ", _percentage_small_clients)
         print("experiment_name: ", experiment_name)
         print("how_small_percentage: ", how_small_percentage)
         run_single_case(experiment_name = experiment_name,
-            
+                        
+                        client_names=client_names,
+
                         X_train = X_train, 
                         y_train = y_train,
                         X_test = X_test, 
                         y_test = y_test,
 
                         how_small_percentage = how_small_percentage,
-                        percentage_small_clients = _percentage_small_clients, 
+                        special_clients = special_clients, 
                         input_shape=input_shape, 
                         nb_classes=nb_classes, 
                         class_weights=class_weights, 

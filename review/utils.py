@@ -147,9 +147,8 @@ def assign_data_to_clients(clients: dict, X:np.ndarray, y:np.ndarray, nb_classes
         clients[client_name] = list(zip(X, y))
     return clients
 
-def create_clients(X, y, nb_classes, sampling_technique, num_clients=10, initial='clients'):
+def create_clients(X, y, nb_classes, sampling_technique, client_names):
     #create a list of client names
-    client_names = ['{}_{}'.format(initial, i+1) for i in range(num_clients)]
     clients = {client_names[i] : [] for i in range(len(client_names))}
     return assign_data_to_clients(clients, X, y, nb_classes, sampling_technique, X, y)
 
@@ -254,7 +253,7 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
 
     #fit local model with client's data
     print(f"[TRAINING] Round: {comm_round} | Client: {client_name}")
-    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=local_client_epochs, verbose=0, class_weight=class_weights)
+    # client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=local_client_epochs, verbose=0, class_weight=class_weights)
 
     #scale the model weights and add to list
     # scaling_factor = weight_scalling_factor(client_set, client_name)
@@ -269,7 +268,8 @@ def test_model(X_test, y_test,  model, comm_round, mode, client_name = None, eva
         client_name = "all testing"
 
     #logits = model.predict(_X_test, batch_size=100)
-    logits = model.predict(X_test)
+    with tf.device('/cpu:0'):
+        logits = model.predict(X_test)
     loss = cce(y_test, logits)
     y_hat = np.argmax(logits, axis=1)
     y_true = np.argmax(y_test, axis=1)

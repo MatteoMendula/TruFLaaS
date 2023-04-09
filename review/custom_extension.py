@@ -6,13 +6,13 @@ import constants
 from threading import Thread
 import tensorflow as tf
 
-def create_small_batches(clients_batched_standard, percentage_how_many_small, sample_indices):
-    original_size = len(clients_batched_standard.keys())
-    how_many_small = int(original_size * percentage_how_many_small)
+def create_small_batches(clients_batched_standard, special_clients, original_sample_size, small_sample_size):
     new_batches_with_small_clients = {}
+
     for index, client_name in enumerate(clients_batched_standard.keys()):
+        sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
         # small clients
-        if index in range(how_many_small):
+        if client_name in special_clients:
             new_batches_with_small_clients[client_name] = [clients_batched_standard[client_name][index] for index in sample_indices]
         # normal clients
         else:        
