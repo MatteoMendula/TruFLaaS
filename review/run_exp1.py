@@ -8,12 +8,14 @@ import tensorflow as tf
 import keras
 import numpy as np
 
-DEBUG = True
+DEBUG = False
 
 def run_single_case(
         experiment_name, 
         X_train, 
         y_train, 
+        X_test,
+        y_test,
         how_small_percentage,
         percentage_small_clients, 
         input_shape, 
@@ -22,7 +24,7 @@ def run_single_case(
         test_batched_overall, 
         test_batched_reduced):
     print("Creating clients...")
-    clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
+    clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')    
     client_names = list(clients_batched_original.keys())
     random.shuffle(client_names)
 
@@ -31,7 +33,9 @@ def run_single_case(
     small_sample_size = int(original_sample_size * how_small_percentage)
     sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
 
-    print("sample_indices", sample_indices)
+    client_batches_testing = {}
+
+    print("small_sample_size", small_sample_size)
 
     # create small batches
     clients_batched_dic = {}
@@ -52,6 +56,7 @@ def run_single_case(
 
     if DEBUG:
         for client_name in client_names:
+            print(" - - - TRAIN - - -")
             print("{}_no_selection".format(client_name), len(clients_batched_dic["NO_SELECTION"][client_name]))
             print("{}TRUFLAAS".format(client_name), len(clients_batched_dic["TRUFLAAS"][client_name]))
             print("{}TRUSTFED".format(client_name), len(clients_batched_dic["TRUSTFED"][client_name]))
@@ -67,27 +72,36 @@ def run_single_case(
                         optimizer=constants.optimizer,
                         metrics=constants.metrics)
         
+        # creating test samples for TRUEFLAAS and TRUSTFED too
+        X_test_sample, y_test_sample = custom_extension.sample_test(X_test, y_test, constants.local_testing_size)
+        client_batches_testing[client_name] = {}
+        client_batches_testing[client_name]["X_test_sample"] = X_test_sample
+        client_batches_testing[client_name]["y_test_sample"] = y_test_sample
+
         client_set["NO_SELECTION"][client_name]["model"] = local_model
         client_set["NO_SELECTION"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
+        client_set["NO_SELECTION"][client_name]["testing"] = custom_extension.create_local_node_testing_batched(client_batches_testing[client_name]["X_test_sample"], client_batches_testing[client_name]["y_test_sample"])
+        
 
     for (client_name, data) in clients_batched_dic["TRUFLAAS"].items():
         local_model = utils.get_model(input_shape, nb_classes)
         local_model.compile(loss=constants.loss, 
                         optimizer=constants.optimizer, 
                         metrics=constants.metrics)
-        
+    
         client_set["TRUFLAAS"][client_name]["model"] = local_model
         client_set["TRUFLAAS"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
+        client_set["TRUFLAAS"][client_name]["testing"] = custom_extension.create_local_node_testing_batched(client_batches_testing[client_name]["X_test_sample"], client_batches_testing[client_name]["y_test_sample"])
 
     for (client_name, data) in clients_batched_dic["TRUSTFED"].items():
         local_model = utils.get_model(input_shape, nb_classes)
         local_model.compile(loss=constants.loss, 
                         optimizer=constants.optimizer, 
                         metrics=constants.metrics)
-        
         client_set["TRUSTFED"][client_name]["model"] = local_model
         client_set["TRUSTFED"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
-
+        client_set["TRUSTFED"][client_name]["testing"] = custom_extension.create_local_node_testing_batched(client_batches_testing[client_name]["X_test_sample"], client_batches_testing[client_name]["y_test_sample"])
+        
     # initialize testing metrics
     testing_metrics : dict = {}
     testing_metrics["NO_SELECTION"] = {}
@@ -288,7 +302,9 @@ if __name__ == "__main__":
         run_single_case(experiment_name = experiment_name,
             
                         X_train = X_train, 
-                        y_train = y_train, 
+                        y_train = y_train,
+                        X_test = X_test, 
+                        y_test = y_test,
 
                         how_small_percentage = how_small_percentage,
                         percentage_small_clients = _percentage_small_clients, 

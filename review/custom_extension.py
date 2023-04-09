@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import csv
 import constants
 from threading import Thread
+import tensorflow as tf
 
 def create_small_batches(clients_batched_standard, percentage_how_many_small, sample_indices):
     original_size = len(clients_batched_standard.keys())
@@ -65,71 +66,51 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
 
     client_names = list(client_set.keys())
     selected_clients = {}
-    evaluation_scores = {}
-    evaluation_scores_rares = {}
     global_count = utils.calculate_global_count(client_set)
 
     local_weight_list = list()
-    threads = [None] * len(client_names)
-    threads_rares = [None] * len(client_names)
+    # threads = [None] * len(client_names)
+    # threads_rares = [None] * len(client_names)
+
+    discarding_votes = {}
 
     print("TESTING: ", mode)
-    # -----------------------------
-    # parallel version
-    # -----------------------------
-    for i, client_name in enumerate(client_names):
-        model = client_set[client_name]["model"]
-        for (x_batch, y_batch) in test_batched:
-            threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i), client_name, evaluation_scores)) 
-
-    if test_batch_rares != None:
-        for i, client_name in enumerate(client_names):
+    for client_name_tester_name in client_names:
+        evaluation_scores = {}
+        for client_name in client_names:
+            # a client cannot test itself
+            if client_name == client_name_tester_name:
+                continue
             model = client_set[client_name]["model"]
-            for(x_batch, y_batch) in test_batch_rares:
-                threads_rares[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local-rares{}".format(i), client_name, evaluation_scores_rares)) 
+            test_batched_client = client_set[client_name_tester_name]["testing"]
+            # for (x_batch, y_batch) in test_batched:
+            for (x_batch, y_batch) in test_batched_client:
+                g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local_{}".format(mode))
+                evaluation_scores[client_name] = g_loss
 
-    for i in range(len(threads)):
-        threads[i].start()
-    for i in range(len(threads_rares)):
-        threads_rares[i].start()
+        evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
+        evaluation_scores_std = np.std(list(evaluation_scores.values()))
 
-    for i in range(len(threads)):
-        threads[i].join()
-    for i in range(len(threads_rares)): 
-        threads_rares[i].join() 
+        for client_name in client_names:
+            if client_name == client_name_tester_name:
+                continue
+            if client_name not in discarding_votes.keys():
+                discarding_votes[client_name] = 0
+            if mode == "TRUFLAAS" and evaluation_scores[client_name] < evaluation_scores_mean - std_factor * evaluation_scores_std:
+                discarding_votes[client_name] += 1
+            elif mode == "TRUSTFED" and (evaluation_scores[client_name] < evaluation_scores_mean - std_factor * evaluation_scores_std or evaluation_scores[client_name] > evaluation_scores_mean + std_factor * evaluation_scores_std):
+                discarding_votes[client_name] += 1
 
-    # -----------------------------
-    # sequential version - loss
-    # -----------------------------
-    # for client_name in client_names:
-    #     model = client_set[client_name]["model"]
-    #     for (x_batch, y_batch) in test_batched:
-    #         g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
-    #         evaluation_scores[client_name] = g_loss
-
-    #         if test_batch_rares != False:
-    #             g_loss_rares, g_accuracy_rares, g_precision_rares, g_recall_rares, g_f1_rares = utils.test_model(x_batch, y_batch, model, comm_round, "local rates")
-    #             evaluation_scores_rares[client_name] = g_accuracy_rares
-
-    evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
-    evaluation_scores_std = np.std(list(evaluation_scores.values()))
-
-    if test_batch_rares != False:
-        evaluation_scores_mean_rares = np.mean(list(evaluation_scores_rares.values()))
-        evaluation_scores_std_rares = np.std(list(evaluation_scores_rares.values()))
-
-    for client_name in evaluation_scores.keys():
-        acc_score = evaluation_scores[client_name]
-        acc_score_rares = evaluation_scores_rares[client_name]
-        if (mode == "TRUFLAAS" and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std):
-            selected_clients[client_name] = client_set[client_name]
-        elif (mode == "TRUSTFED" and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std and acc_score < evaluation_scores_mean + std_factor * evaluation_scores_std):
-            selected_clients[client_name] = client_set[client_name]
+    for client_name in discarding_votes.keys():
+        if discarding_votes[client_name] > int(len(client_names)/2):
+            continue
+        selected_clients[client_name] = client_set[client_name]
+    
         # here intersection and union switched because we are selecting the clients instead of excluding them
-        elif (mode == "INTERSECTION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares or acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):
-            selected_clients[client_name] = client_set[client_name]
-        elif (mode == "UNION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):  
-            selected_clients[client_name] = client_set[client_name]
+        # elif (mode == "INTERSECTION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares or acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):
+        #     selected_clients[client_name] = client_set[client_name]
+        # elif (mode == "UNION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):  
+        #     selected_clients[client_name] = client_set[client_name]
 
     print("selected clients: ", selected_clients.keys())
 
@@ -144,7 +125,7 @@ def select_all_clients(client_set, test_batched, comm_round):
     client_names = list(client_set.keys())
 
     local_weight_list = list()
-    threads = [None] * len(client_names)
+    # threads = [None] * len(client_names)
 
     # test anyway ?
     print("TESTING: ", "ALL")
@@ -152,28 +133,37 @@ def select_all_clients(client_set, test_batched, comm_round):
     # -----------------------------
     # parallel version
     # -----------------------------
-    for i, client_name in enumerate(client_names):  
-        model = client_set[client_name]["model"]
-        for(x_batch, y_batch) in test_batched:
-            threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i)))     
-    for i in range(len(threads)):
-        threads[i].start()
+    # for i, client_name in enumerate(client_names):  
+    #     model = client_set[client_name]["model"]
+    #     test_batched_client = client_set[client_name]["testing"]
+    #     # for(x_batch, y_batch) in test_batched:
+    #     for(x_batch, y_batch) in test_batched_client:
+    #         print("x_batch.shape", x_batch.shape)
+    #         print("y_batch.shape", y_batch.shape)
+    #         threads[i] : Thread = Thread(target=utils.test_model, args=(x_batch, y_batch, model, comm_round, "local{}".format(i)))     
+    # for i in range(len(threads)):
+    #     print("starting thread ", i)
+    #     threads[i].start()
 
-    for i in range(len(threads)):
-        threads[i].join() 
+    # for i in range(len(threads)):
+    #     threads[i].join() 
+
+    # print("all threads joined")
 
 
     # -----------------------------
     # sequential version
     # -----------------------------
-    # for client_name in client_names:
-    #     model = client_set[client_name]["model"]
-    #     for(x_batch, y_batch) in test_batched:
-    #         g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
+    for i, client_name in enumerate(client_names):  
+        model = client_set[client_name]["model"]
+        test_batched_client = client_set[client_name]["testing"]
+        # for(x_batch, y_batch) in test_batched:
+        for(x_batch, y_batch) in test_batched_client:
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local{}".format(i))
 
-    # for client_name in client_set.keys():
-    #     model_weights = utils.get_model_weights(client_set, client_name, global_count) 
-    #     local_weight_list.append(model_weights)
+    for client_name in client_set.keys():
+        model_weights = utils.get_model_weights(client_set, client_name, global_count) 
+        local_weight_list.append(model_weights)
 
     return local_weight_list
 
@@ -234,6 +224,10 @@ def sample_test(X_test, y_test, sample_percentage=0.2):
     X_test_sample = X_test[sample_indices]
     y_test_sample = y_test[sample_indices]
     return X_test_sample, y_test_sample
+
+def create_local_node_testing_batched(X_test_sample, y_test_sample):
+    test_batched = tf.data.Dataset.from_tensor_slices((X_test_sample, y_test_sample)).batch(len(X_test_sample))
+    return test_batched
 
 def get_rare_cases_from_df(df):
     return df[df["type"] == "gafgyt_scan"]
