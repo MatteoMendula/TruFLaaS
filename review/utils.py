@@ -190,7 +190,17 @@ def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     x = LayerNormalization(epsilon=1e-6)(x)
     return x + res
 
+
 def get_model(input_shape, nb_classes) -> tf.keras.Model:
+    return tf.keras.models.Sequential(
+        [
+            tf.keras.layers.Dense(64, input_dim=input_shape, activation='relu'),
+            tf.keras.layers.Dense(32, activation='relu'),
+            tf.keras.layers.Dropout(0.2),
+            tf.keras.layers.Dense(nb_classes, activation='softmax')
+        ])
+
+def get_model_original(input_shape, nb_classes) -> tf.keras.Model:
     head_size=64                        # Embedding size for attention
     num_heads=3                         # Number of attention heads
     ff_dim=128                          # Hidden layer size in feed forward network inside transformer

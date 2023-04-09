@@ -17,6 +17,7 @@ def run_single_case(
         y_train, 
         X_test,
         y_test,
+        percentage_small_clients,
         how_small_percentage,
         special_clients, 
         input_shape, 
@@ -313,6 +314,7 @@ if __name__ == "__main__":
                         X_test = X_test, 
                         y_test = y_test,
 
+                        percentage_small_clients = _percentage_small_clients,
                         how_small_percentage = how_small_percentage,
                         special_clients = special_clients, 
                         input_shape=input_shape, 
