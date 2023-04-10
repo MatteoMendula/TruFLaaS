@@ -99,8 +99,12 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, exper
     elif mode == "TRUFLAAS":
         evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
         evaluation_scores_std = np.std(list(evaluation_scores.values()))
+        print("evaluation_scores_mean: ", evaluation_scores_mean)
+        print("evaluation_scores_std: ", evaluation_scores_std)
         for client_name in evaluation_scores.keys():
-            if evaluation_scores[client_name] > evaluation_scores_mean - constants.std_factor * evaluation_scores_std:
+            print("evaluation_scores[{}]: ".format(client_name), evaluation_scores[client_name])
+            if evaluation_scores[client_name] > evaluation_scores_mean + constants.std_factor * evaluation_scores_std:
+                print("skipped: ", client_name)
                 continue
             selected_clients[client_name] = client_set[client_name]
 
