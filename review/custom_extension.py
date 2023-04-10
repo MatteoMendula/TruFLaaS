@@ -103,7 +103,7 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, exper
         print("evaluation_scores_std: ", evaluation_scores_std)
         for client_name in evaluation_scores.keys():
             print("evaluation_scores[{}]: ".format(client_name), evaluation_scores[client_name])
-            if evaluation_scores[client_name] > evaluation_scores_mean  constants.std_factor * evaluation_scores_std:
+            if evaluation_scores[client_name] > evaluation_scores_mean + constants.std_factor * evaluation_scores_std:
                 print("skipped: ", client_name)
                 continue
             selected_clients[client_name] = client_set[client_name]
