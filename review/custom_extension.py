@@ -103,7 +103,7 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, exper
         print("evaluation_scores_std: ", evaluation_scores_std)
         for client_name in evaluation_scores.keys():
             print("evaluation_scores[{}]: ".format(client_name), evaluation_scores[client_name])
-            if evaluation_scores[client_name] > evaluation_scores_mean + constants.std_factor * evaluation_scores_std:
+            if evaluation_scores[client_name] > evaluation_scores_mean  constants.std_factor * evaluation_scores_std:
                 print("skipped: ", client_name)
                 continue
             selected_clients[client_name] = client_set[client_name]
@@ -173,7 +173,7 @@ def save_csv(dict_of_metrics, experiment_name, percentage_small_clients, is_unio
     line = ', '.join(str(e) for e in header)
     folder_path = "./results/{}/{}".format(experiment_name, case_name)
     create_folder_if_not_exists(folder_path)
-    with open(folder_path, "w") as file:
+    with open("{}/out.csv".format(folder_path), "w") as file:
         file.write(line+"\n")
         for round in range(constants.comms_round):
             line = "{}, ".format(round)
