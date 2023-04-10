@@ -11,7 +11,7 @@ import os
 def create_small_batches(clients_batched_standard, special_clients, original_sample_size, small_sample_size):
     new_batches_with_small_clients = {}
 
-    for index, client_name in enumerate(clients_batched_standard.keys()):
+    for _, client_name in enumerate(clients_batched_standard.keys()):
         sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
         # small clients
         if client_name in special_clients:
@@ -92,10 +92,11 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, exper
     if mode == "TRUSTFED":
         for client_name in discarding_votes.keys():
             if discarding_votes[client_name] > int(len(client_names)/2):
-                print("discarding_votes[client_name]", discarding_votes[client_name])
+                print("discarding_votes[{}]".format(client_name), discarding_votes[client_name])
                 print("skipped: ", client_name)
                 continue
             selected_clients[client_name] = client_set[client_name]
+
     elif mode == "TRUFLAAS":
         evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
         evaluation_scores_std = np.std(list(evaluation_scores.values()))

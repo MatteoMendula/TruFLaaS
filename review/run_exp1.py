@@ -76,7 +76,10 @@ def run_single_case(
                         metrics=constants.metrics)
         
         # creating test samples for TRUEFLAAS and TRUSTFED too
-        X_test_sample, y_test_sample = custom_extension.sample_test(X_test, y_test, constants.local_testing_size)
+        if client_name in special_clients:
+            X_test_sample, y_test_sample = custom_extension.sample_test(X_test, y_test, constants.local_testing_size)
+        else:
+            X_test_sample, y_test_sample = custom_extension.sample_test(X_test, y_test, 1)
         client_batches_testing_trustfed[client_name] = {}
         client_batches_testing_trustfed[client_name]["X_test_sample"] = X_test_sample
         client_batches_testing_trustfed[client_name]["y_test_sample"] = y_test_sample
