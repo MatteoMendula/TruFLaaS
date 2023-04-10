@@ -208,10 +208,10 @@ def run_single_case(
             testing_metrics["NO_SELECTION"]["recall"].append(g_recall)
             testing_metrics["NO_SELECTION"]["f1"].append(g_f1)
    
-            if g_accuracy > best_accuracy_overall["NO_SELECTION"]:
-                best_accuracy_overall["NO_SELECTION"] = g_accuracy
-                global_model["NO_SELECTION"].save_weights('global_model_best_no_selection.h5')
-                print("New NO_SELECTION Weights Saved")
+            # if g_accuracy > best_accuracy_overall["NO_SELECTION"]:
+            #     best_accuracy_overall["NO_SELECTION"] = g_accuracy
+            #     global_model["NO_SELECTION"].save_weights('global_model_best_no_selection.h5')
+            #     print("New NO_SELECTION Weights Saved")
             
         # testing global model with TRUFLAAS
         for (x_batch, y_batch) in test_batched_overall:
@@ -236,10 +236,10 @@ def run_single_case(
             testing_metrics["TRUSTFED"]["recall"].append(g_recall)
             testing_metrics["TRUSTFED"]["f1"].append(g_f1)
 
-            if g_accuracy > best_accuracy_overall["TRUSTFED"]:
-                best_accuracy_overall["TRUSTFED"] = g_accuracy
-                global_model["TRUSTFED"].save_weights('global_model_best_trustfed.h5')
-                print("New TRUSTFED Weights Saved")
+            # if g_accuracy > best_accuracy_overall["TRUSTFED"]:
+            #     best_accuracy_overall["TRUSTFED"] = g_accuracy
+            #     global_model["TRUSTFED"].save_weights('global_model_best_trustfed.h5')
+            #     print("New TRUSTFED Weights Saved")
 
     print("Best Accuracy Overall NO_SELECTION: ", best_accuracy_overall["NO_SELECTION"])
     print("Best Accuracy Overall TRUFLAAS: ", best_accuracy_overall["TRUFLAAS"])
