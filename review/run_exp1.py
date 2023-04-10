@@ -7,6 +7,8 @@ import custom_extension
 import tensorflow as tf
 import keras
 import numpy as np
+from playsound import playsound as play
+
 
 DEBUG = False
 
@@ -220,10 +222,10 @@ def run_single_case(
             testing_metrics["TRUFLAAS"]["recall"].append(g_recall)
             testing_metrics["TRUFLAAS"]["f1"].append(g_f1)
 
-            if g_accuracy > best_accuracy_overall["TRUFLAAS"]:
-                best_accuracy_overall["TRUFLAAS"] = g_accuracy
-                global_model["TRUFLAAS"].save_weights('global_model_best_truflaas.h5')
-                print("New TRUFLAAS Weights Saved")
+            # if g_accuracy > best_accuracy_overall["TRUFLAAS"]:
+            #     best_accuracy_overall["TRUFLAAS"] = g_accuracy
+            #     global_model["TRUFLAAS"].save_weights('global_model_best_truflaas.h5')
+            #     print("New TRUFLAAS Weights Saved")
 
         # testing global model with TRUSTFED
         for (x_batch, y_batch) in test_batched_overall:
@@ -322,3 +324,5 @@ if __name__ == "__main__":
                         class_weights=class_weights, 
                         test_batched_overall=test_batched_overall, 
                         test_batched_truflass=test_batched_truflass)
+    play('./assets/alarm.mp3')
+        
