@@ -1,0 +1,3 @@
+round, loss_no_selection, loss_truflaas, loss_trustfed, accuracy_no_selection, accuracy_truflaas, accuracy_trustfed, precision_no_selection, precision_truflaas, precision_trustfed, recall_no_selection, recall_truflaas, recall_trustfed, f1_no_selection, f1_truflaas, f1_trustfed
+0, 2.3975090980529785, 2.367621660232544, 2.391984462738037, 0.07937724869002487, 0.14832902711708884, 0.083790114215343, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+1, 2.378513813018799, 2.2214057445526123, 2.276926279067993, 0.22172385482819404, 0.5139811170405428, 0.3238717310989303, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 

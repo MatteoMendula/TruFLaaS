@@ -21,16 +21,14 @@ def create_small_batches(clients_batched_standard, special_clients, original_sam
             new_batches_with_small_clients[client_name] = clients_batched_standard[client_name]
     return new_batches_with_small_clients
 
-def create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_how_many_noisy, sample_indices):
+def create_noisy_batches(clients_batches_original, clients_batches_malicous, special_clients, sample_indices):
     # to run faster every client is how_small_percentage times smaller
-    number_of_clients = len(clients_batches_original.keys())
-    how_many_noisy = int(number_of_clients * percentage_how_many_noisy)
     new_batches_with_malicious_clients = {}
 
     # make how_many_noisy clients noisy
     for index, client_name in enumerate(clients_batches_original.keys()):
         # malicious clients
-        if index in range(how_many_noisy):
+        if client_name in special_clients:
             new_batches_with_malicious_clients[client_name] = clients_batches_malicous[client_name]
         else:
             new_batches_with_malicious_clients[client_name] = clients_batches_original[client_name]
@@ -94,6 +92,8 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, exper
     if mode == "TRUSTFED":
         for client_name in discarding_votes.keys():
             if discarding_votes[client_name] > int(len(client_names)/2):
+                print("discarding_votes[client_name]", discarding_votes[client_name])
+                print("skipped: ", client_name)
                 continue
             selected_clients[client_name] = client_set[client_name]
     elif mode == "TRUFLAAS":

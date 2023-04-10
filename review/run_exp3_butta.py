@@ -7,49 +7,42 @@ import custom_extension
 import tensorflow as tf
 import keras
 import numpy as np
-from playsound import playsound as play
 
-
-DEBUG = False
+DEBUG = True
 
 def run_single_case(
         experiment_name, 
-        client_names,
         X_train, 
-        y_train, 
-        X_test,
-        y_test,
+        y_train,
         X_train_malicious,
-        y_train_malicious, 
-        X_test_malicious, 
-        y_test_malicious,
-        percentage_noisy_clients,
+        y_train_malicious,
         how_small_percentage,
-        special_clients, 
+        percentage_noisy_clients, 
         input_shape, 
         nb_classes, 
         class_weights,
-        test_batched_overall,
-        test_batched_truflass):
+        test_batched_overall, 
+        test_batched_reduced):
+    
+    # to run faster every client is how_small_percentage times smaller
+    percentage_small_clients = 1
+    
     print("Creating clients...")
-    clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, client_names)    
-    clients_batched_malicous = utils.create_clients(X_train_malicious, y_train_malicious, nb_classes, constants.sampling_technique, client_names)
-    client_names = list(clients_batched_original.keys())
+    clients_batches_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
+    clients_batches_malicous = utils.create_clients(X_train_malicious, y_train_malicious, nb_classes, constants.sampling_technique, num_clients=constants.num_clients, initial='client')
+    client_names = list(clients_batches_original.keys())
+    random.shuffle(client_names)
 
     # this is meant to give to all clients the same samples indexes
-    original_sample_size = len(clients_batched_original[client_names[0]])
+    original_sample_size = len(clients_batches_original[client_names[0]])
     small_sample_size = int(original_sample_size * how_small_percentage)
     sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
 
-    client_batches_testing_trustfed = {}
-
-    print("small_sample_size", small_sample_size)
-
-    # create noisy batches
+    # create small batches
     clients_batched_dic = {}
-    clients_batched_dic["NO_SELECTION"] = custom_extension.create_noisy_batches(clients_batched_original, clients_batched_malicous, special_clients, sample_indices)
-    clients_batched_dic["TRUFLAAS"] = custom_extension.create_noisy_batches(clients_batched_original, clients_batched_malicous, special_clients, sample_indices)
-    clients_batched_dic["TRUSTFED"] = custom_extension.create_noisy_batches(clients_batched_original, clients_batched_malicous, special_clients, sample_indices)
+    clients_batched_dic["NO_SELECTION"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_noisy_clients, sample_indices)
+    clients_batched_dic["TRUFLAAS"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_noisy_clients, sample_indices)
+    clients_batched_dic["TRUSTFED"] = custom_extension.create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_noisy_clients, sample_indices)
 
     global_model = {}
     global_model["NO_SELECTION"] : keras.Model = utils.get_model(input_shape, nb_classes)
@@ -64,7 +57,6 @@ def run_single_case(
 
     if DEBUG:
         for client_name in client_names:
-            print(" - - - TRAIN - - -")
             print("{}_no_selection".format(client_name), len(clients_batched_dic["NO_SELECTION"][client_name]))
             print("{}TRUFLAAS".format(client_name), len(clients_batched_dic["TRUFLAAS"][client_name]))
             print("{}TRUSTFED".format(client_name), len(clients_batched_dic["TRUSTFED"][client_name]))
@@ -76,40 +68,31 @@ def run_single_case(
 
     for (client_name, data) in clients_batched_dic["NO_SELECTION"].items():
         local_model = utils.get_model(input_shape, nb_classes)
-        local_model.compile(loss=constants.loss,
-                        optimizer=constants.optimizer,
+        local_model.compile(loss=constants.loss, 
+                        optimizer=constants.optimizer, 
                         metrics=constants.metrics)
         
-        # creating test samples for TRUEFLAAS and TRUSTFED too
-        X_test_sample, y_test_sample = custom_extension.sample_test(X_test, y_test, constants.local_testing_size)
-        client_batches_testing_trustfed[client_name] = {}
-        client_batches_testing_trustfed[client_name]["X_test_sample"] = X_test_sample
-        client_batches_testing_trustfed[client_name]["y_test_sample"] = y_test_sample
-
         client_set["NO_SELECTION"][client_name]["model"] = local_model
         client_set["NO_SELECTION"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
-        client_set["NO_SELECTION"][client_name]["testing"] = custom_extension.create_testing_batched(client_batches_testing_trustfed[client_name]["X_test_sample"], client_batches_testing_trustfed[client_name]["y_test_sample"])
-        
 
     for (client_name, data) in clients_batched_dic["TRUFLAAS"].items():
         local_model = utils.get_model(input_shape, nb_classes)
         local_model.compile(loss=constants.loss, 
                         optimizer=constants.optimizer, 
                         metrics=constants.metrics)
-    
+        
         client_set["TRUFLAAS"][client_name]["model"] = local_model
         client_set["TRUFLAAS"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
-        # client_set["TRUFLAAS"][client_name]["testing"] = custom_extension.create_testing_batched(client_batches_testing_trustfed[client_name]["X_test_sample"], client_batches_testing_trustfed[client_name]["y_test_sample"])
 
     for (client_name, data) in clients_batched_dic["TRUSTFED"].items():
         local_model = utils.get_model(input_shape, nb_classes)
         local_model.compile(loss=constants.loss, 
                         optimizer=constants.optimizer, 
                         metrics=constants.metrics)
+        
         client_set["TRUSTFED"][client_name]["model"] = local_model
         client_set["TRUSTFED"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
-        client_set["TRUSTFED"][client_name]["testing"] = custom_extension.create_testing_batched(client_batches_testing_trustfed[client_name]["X_test_sample"], client_batches_testing_trustfed[client_name]["y_test_sample"])
-        
+
     # initialize testing metrics
     testing_metrics : dict = {}
     testing_metrics["NO_SELECTION"] = {}
@@ -160,10 +143,6 @@ def run_single_case(
         average_weights["NO_SELECTION"] : list = list()
         average_weights["TRUFLAAS"] : list = list()
         average_weights["TRUSTFED"] : list = list()
-
-        # create appropriate testing batches TRUFLAAS
-        this_round_truflass_testing = test_batched_truflass[comm_round]
-        test_batched_truflaas = custom_extension.create_testing_batched(this_round_truflass_testing["x"], this_round_truflass_testing["y"])
         
         #loop through each client and create new local model
         # no_selection_clients
@@ -190,9 +169,9 @@ def run_single_case(
         for i in range(constants.num_clients):
             threads["TRUSTFED"][i].join()
 
-        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], None , comm_round, experiment_name = experiment_name)
-        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched_truflaas, comm_round, mode = "TRUFLAAS", experiment_name = experiment_name)
-        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], None, comm_round, mode = "TRUSTFED", experiment_name = experiment_name)
+        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], test_batched_reduced, comm_round)
+        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched_reduced, comm_round, mode = "TRUFLAAS")
+        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], test_batched_reduced, comm_round, mode = "TRUSTFED")
 
         #to get the average over all the local model, we simply calculate the average of the sum of local weights
         average_weights["NO_SELECTION"] : list = utils.average_model_weights(local_weight_list["NO_SELECTION"])
@@ -206,65 +185,77 @@ def run_single_case(
 
         # testing global model with NO_SELECTION
         for(x_batch, y_batch) in test_batched_overall:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["NO_SELECTION"], comm_round, "[{}] global NO_SELECTION".format(experiment_name))
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["NO_SELECTION"], comm_round, "global no_selection")
             testing_metrics["NO_SELECTION"]["loss"].append(g_loss)
             testing_metrics["NO_SELECTION"]["accuracy"].append(g_accuracy)
             testing_metrics["NO_SELECTION"]["precision"].append(g_precision)
             testing_metrics["NO_SELECTION"]["recall"].append(g_recall)
             testing_metrics["NO_SELECTION"]["f1"].append(g_f1)
    
-            # if g_accuracy > best_accuracy_overall["NO_SELECTION"]:
-            #     best_accuracy_overall["NO_SELECTION"] = g_accuracy
-            #     global_model["NO_SELECTION"].save_weights('global_model_best_no_selection.h5')
-            #     print("New NO_SELECTION Weights Saved")
+            if g_accuracy > best_accuracy_overall["NO_SELECTION"]:
+                best_accuracy_overall["NO_SELECTION"] = g_accuracy
+                global_model["NO_SELECTION"].save_weights('global_model_best_no_selection.h5')
+                print("New NO_SELECTION Weights Saved")
             
         # testing global model with TRUFLAAS
         for (x_batch, y_batch) in test_batched_overall:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUFLAAS"], comm_round, "[{}] global TRUFLAAS".format(experiment_name))
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUFLAAS"], comm_round, "global truflaas")
             testing_metrics["TRUFLAAS"]["loss"].append(g_loss)
             testing_metrics["TRUFLAAS"]["accuracy"].append(g_accuracy)
             testing_metrics["TRUFLAAS"]["precision"].append(g_precision)
             testing_metrics["TRUFLAAS"]["recall"].append(g_recall)
             testing_metrics["TRUFLAAS"]["f1"].append(g_f1)
 
-            # if g_accuracy > best_accuracy_overall["TRUFLAAS"]:
-            #     best_accuracy_overall["TRUFLAAS"] = g_accuracy
-            #     global_model["TRUFLAAS"].save_weights('global_model_best_truflaas.h5')
-            #     print("New TRUFLAAS Weights Saved")
+            if g_accuracy > best_accuracy_overall["TRUFLAAS"]:
+                best_accuracy_overall["TRUFLAAS"] = g_accuracy
+                global_model["TRUFLAAS"].save_weights('global_model_best_truflaas.h5')
+                print("New TRUFLAAS Weights Saved")
 
         # testing global model with TRUSTFED
         for (x_batch, y_batch) in test_batched_overall:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUSTFED"], comm_round, "[{}] global TRUSTFED".format(experiment_name))
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, global_model["TRUSTFED"], comm_round, "global trustfed")
             testing_metrics["TRUSTFED"]["loss"].append(g_loss)
             testing_metrics["TRUSTFED"]["accuracy"].append(g_accuracy)
             testing_metrics["TRUSTFED"]["precision"].append(g_precision)
             testing_metrics["TRUSTFED"]["recall"].append(g_recall)
             testing_metrics["TRUSTFED"]["f1"].append(g_f1)
 
-            # if g_accuracy > best_accuracy_overall["TRUSTFED"]:
-            #     best_accuracy_overall["TRUSTFED"] = g_accuracy
-            #     global_model["TRUSTFED"].save_weights('global_model_best_trustfed.h5')
-            #     print("New TRUSTFED Weights Saved")
+            if g_accuracy > best_accuracy_overall["TRUSTFED"]:
+                best_accuracy_overall["TRUSTFED"] = g_accuracy
+                global_model["TRUSTFED"].save_weights('global_model_best_trustfed.h5')
+                print("New TRUSTFED Weights Saved")
 
     print("Best Accuracy Overall NO_SELECTION: ", best_accuracy_overall["NO_SELECTION"])
     print("Best Accuracy Overall TRUFLAAS: ", best_accuracy_overall["TRUFLAAS"])
     print("Best Accuracy Overall TRUSTFED: ", best_accuracy_overall["TRUSTFED"])
 
+    for round in range(constants.comms_round):
+        print("Round: ", round)
+        print("NO_SELECTION: ", testing_metrics["NO_SELECTION"]["accuracy"][round])
+        print("TRUFLAAS: ", testing_metrics["TRUFLAAS"]["accuracy"][round])
+        print("TRUSTFED: ", testing_metrics["TRUSTFED"]["accuracy"][round])
+
+    print("-------------------- --------------------- ---------------------")
+
+    print(testing_metrics["NO_SELECTION"])
+    print(testing_metrics["TRUFLAAS"])
+    print(testing_metrics["TRUSTFED"])
+
     print("-------------------- --------------------- ---------------------")
     print("saving and showing graphs")
 
-    custom_extension.save_graphs(testing_metrics, experiment_name, percentage_noisy_clients)
+    custom_extension.save_graphs(testing_metrics, experiment_name, percentage_small_clients)
 
     print("-------------------- --------------------- ---------------------")
     print("saving csv file")
 
-    custom_extension.save_csv(testing_metrics, experiment_name, percentage_noisy_clients)
+    custom_extension.save_csv(testing_metrics, experiment_name, percentage_small_clients)
 
 
 if __name__ == "__main__":
     #initialize global model
 
-    # experiments 1 --------------------------------------- 
+    # experiments 3 --------------------------------------- 
     experiment_name = "exp3"
     how_small_percentage = 0.01
     runs = [
@@ -284,8 +275,6 @@ if __name__ == "__main__":
     X_train, y_train, X_test, y_test, label_encoder = utils.split_df(df)
     X_train_malicious, y_train_malicious, X_test_malicious, y_test_malicious, label_encoder_malicious = utils.split_df(df_malicious)
 
-    client_names = ['{}_{}'.format("client", i+1) for i in range(constants.num_clients)]
-
     input_shape = X_train.shape[1:]
     nb_classes = len(label_encoder.classes_)
     class_weights = utils.get_class_weights(y_train)
@@ -295,47 +284,26 @@ if __name__ == "__main__":
     # reduce test set size ----------------------------------------------------- LOOK HERE
     X_test_reduced, y_test_reduced = custom_extension.sample_test(X_test, y_test, 0.2)
 
-    # this is used to test the global model with the whole test set
     test_batched_overall = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
-    
-    # this is used by local clients to test their model [TRUSTFED]
-    test_batched_trustfed = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
-    
-    # this is used to test the local model on a subset of the overall test set [TRUFLAAS]
-    test_batched_truflass = custom_extension.split_x_y_into_chunks(X_test, y_test, constants.comms_round)
+    test_batched_reduced = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
 
     for r in runs:
-        _percentage_noisy_clients = r["percentage_noisy_clients"]
-        special_client_amount = int(len(client_names) * _percentage_noisy_clients)
-        random.shuffle(client_names)
-        special_clients = client_names[:special_client_amount]
-        print("--- --- --- STARTING NEW RUN --- --- ---")
-        print("percentage_noisy_clients: ", _percentage_noisy_clients)
+        _percentage_malicious_clients = r["percentage_noisy_clients"]
+        print("percentage_noisy_clients: ", _percentage_malicious_clients)
         print("experiment_name: ", experiment_name)
         print("how_small_percentage: ", how_small_percentage)
-        print(" --- --- --- ---- --- -- --- ---- ------ ---")
         run_single_case(experiment_name = experiment_name,
-                        
-                        client_names=client_names,
-
+            
                         X_train = X_train, 
-                        y_train = y_train,
-                        X_test = X_test, 
-                        y_test = y_test,
+                        y_train = y_train, 
 
                         X_train_malicious = X_train_malicious,
                         y_train_malicious = y_train_malicious,
-                        X_test_malicious = X_test_malicious,
-                        y_test_malicious = y_test_malicious,
 
-                        percentage_noisy_clients = _percentage_noisy_clients,
                         how_small_percentage = how_small_percentage,
-                        special_clients = special_clients, 
+                        percentage_noisy_clients = _percentage_malicious_clients, 
                         input_shape=input_shape, 
                         nb_classes=nb_classes, 
                         class_weights=class_weights, 
                         test_batched_overall=test_batched_overall, 
-                        test_batched_truflass=test_batched_truflass)
-        
-    play('./assets/alarm.mp3')
-        
+                        test_batched_reduced=test_batched_reduced)
