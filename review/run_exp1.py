@@ -23,8 +23,8 @@ def run_single_case(
         input_shape, 
         nb_classes, 
         class_weights,
-        test_batched_overall, 
-        test_batched_reduced):
+        test_batched_overall,
+        test_batched_truflass):
     print("Creating clients...")
     clients_batched_original = utils.create_clients(X_train, y_train, nb_classes, constants.sampling_technique, client_names)    
     client_names = list(clients_batched_original.keys())
@@ -34,7 +34,7 @@ def run_single_case(
     small_sample_size = int(original_sample_size * how_small_percentage)
     sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
 
-    client_batches_testing = {}
+    client_batches_testing_trustfed = {}
 
     print("small_sample_size", small_sample_size)
 
@@ -75,13 +75,13 @@ def run_single_case(
         
         # creating test samples for TRUEFLAAS and TRUSTFED too
         X_test_sample, y_test_sample = custom_extension.sample_test(X_test, y_test, constants.local_testing_size)
-        client_batches_testing[client_name] = {}
-        client_batches_testing[client_name]["X_test_sample"] = X_test_sample
-        client_batches_testing[client_name]["y_test_sample"] = y_test_sample
+        client_batches_testing_trustfed[client_name] = {}
+        client_batches_testing_trustfed[client_name]["X_test_sample"] = X_test_sample
+        client_batches_testing_trustfed[client_name]["y_test_sample"] = y_test_sample
 
         client_set["NO_SELECTION"][client_name]["model"] = local_model
         client_set["NO_SELECTION"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
-        client_set["NO_SELECTION"][client_name]["testing"] = custom_extension.create_local_node_testing_batched(client_batches_testing[client_name]["X_test_sample"], client_batches_testing[client_name]["y_test_sample"])
+        client_set["NO_SELECTION"][client_name]["testing"] = custom_extension.create_testing_batched(client_batches_testing_trustfed[client_name]["X_test_sample"], client_batches_testing_trustfed[client_name]["y_test_sample"])
         
 
     for (client_name, data) in clients_batched_dic["TRUFLAAS"].items():
@@ -92,7 +92,7 @@ def run_single_case(
     
         client_set["TRUFLAAS"][client_name]["model"] = local_model
         client_set["TRUFLAAS"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
-        client_set["TRUFLAAS"][client_name]["testing"] = custom_extension.create_local_node_testing_batched(client_batches_testing[client_name]["X_test_sample"], client_batches_testing[client_name]["y_test_sample"])
+        # client_set["TRUFLAAS"][client_name]["testing"] = custom_extension.create_testing_batched(client_batches_testing_trustfed[client_name]["X_test_sample"], client_batches_testing_trustfed[client_name]["y_test_sample"])
 
     for (client_name, data) in clients_batched_dic["TRUSTFED"].items():
         local_model = utils.get_model(input_shape, nb_classes)
@@ -101,7 +101,7 @@ def run_single_case(
                         metrics=constants.metrics)
         client_set["TRUSTFED"][client_name]["model"] = local_model
         client_set["TRUSTFED"][client_name]["dataset"] = utils.batch_data(data, constants.BATCH_SIZE)
-        client_set["TRUSTFED"][client_name]["testing"] = custom_extension.create_local_node_testing_batched(client_batches_testing[client_name]["X_test_sample"], client_batches_testing[client_name]["y_test_sample"])
+        client_set["TRUSTFED"][client_name]["testing"] = custom_extension.create_testing_batched(client_batches_testing_trustfed[client_name]["X_test_sample"], client_batches_testing_trustfed[client_name]["y_test_sample"])
         
     # initialize testing metrics
     testing_metrics : dict = {}
@@ -153,6 +153,10 @@ def run_single_case(
         average_weights["NO_SELECTION"] : list = list()
         average_weights["TRUFLAAS"] : list = list()
         average_weights["TRUSTFED"] : list = list()
+
+        # create appropriate testing batches TRUFLAAS
+        this_round_truflass_testing = test_batched_truflass[comm_round]
+        test_batched_truflaas = custom_extension.create_testing_batched(this_round_truflass_testing["x"], this_round_truflass_testing["y"])
         
         #loop through each client and create new local model
         # no_selection_clients
@@ -179,9 +183,9 @@ def run_single_case(
         for i in range(constants.num_clients):
             threads["TRUSTFED"][i].join()
 
-        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], test_batched_reduced, comm_round, experiment_name = experiment_name)
-        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched_reduced, comm_round, mode = "TRUFLAAS", experiment_name = experiment_name)
-        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], test_batched_reduced, comm_round, mode = "TRUSTFED", experiment_name = experiment_name)
+        local_weight_list["NO_SELECTION"] : list = custom_extension.select_all_clients(client_set["NO_SELECTION"], None , comm_round, experiment_name = experiment_name)
+        local_weight_list["TRUFLAAS"] : list = custom_extension.select_best_clients(client_set["TRUFLAAS"], test_batched_truflaas, comm_round, mode = "TRUFLAAS", experiment_name = experiment_name)
+        local_weight_list["TRUSTFED"] : list = custom_extension.select_best_clients(client_set["TRUSTFED"], None, comm_round, mode = "TRUSTFED", experiment_name = experiment_name)
 
         #to get the average over all the local model, we simply calculate the average of the sum of local weights
         average_weights["NO_SELECTION"] : list = utils.average_model_weights(local_weight_list["NO_SELECTION"])
@@ -282,8 +286,14 @@ if __name__ == "__main__":
     # reduce test set size ----------------------------------------------------- LOOK HERE
     X_test_reduced, y_test_reduced = custom_extension.sample_test(X_test, y_test, 0.2)
 
+    # this is used to test the global model with the whole test set
     test_batched_overall = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(y_test))
-    test_batched_reduced = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
+    
+    # this is used by local clients to test their model [TRUSTFED]
+    test_batched_trustfed = tf.data.Dataset.from_tensor_slices((X_test_reduced, y_test_reduced)).batch(len(y_test_reduced))
+    
+    # this is used to test the local model on a subset of the overall test set [TRUFLAAS]
+    test_batched_truflass = custom_extension.split_x_y_into_chunks(X_test, y_test, constants.comms_round)
 
     for r in runs:
         _percentage_small_clients = r["percentage_small_clients"]
@@ -311,4 +321,4 @@ if __name__ == "__main__":
                         nb_classes=nb_classes, 
                         class_weights=class_weights, 
                         test_batched_overall=test_batched_overall, 
-                        test_batched_reduced=test_batched_reduced)
+                        test_batched_truflass=test_batched_truflass)

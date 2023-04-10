@@ -263,7 +263,7 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
 
     #fit local model with client's data
     print(f"[TRAINING] Round: {comm_round} | Client: {client_name}")
-    # client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=local_client_epochs, verbose=0, class_weight=class_weights)
+    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=local_client_epochs, verbose=0, class_weight=class_weights)
 
     #scale the model weights and add to list
     # scaling_factor = weight_scalling_factor(client_set, client_name)
@@ -285,7 +285,6 @@ def test_model(X_test, y_test,  model, comm_round, mode, client_name = None, eva
         y_true = np.argmax(y_test, axis=1)
 
         accuracy = accuracy_score(np.argmax(y_test, axis=1), np.argmax(logits, axis=1))
-        
         
         f, precision, recall = f1_score(y_test, logits)
         f1 = f.numpy()
