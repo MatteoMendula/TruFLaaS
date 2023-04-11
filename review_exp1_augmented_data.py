@@ -14,10 +14,10 @@ import random
 from playsound import playsound as play
 
 experiments = 10
-iteration = 10
+iteration = 20
 size = 20
-num_workers = 30
-n_validators = 30
+num_workers = 100
+n_validators = 100
 rounds = 100
 special_options = [0, 25, 40]
 
@@ -29,7 +29,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
     no_augmented_nodes = list(set(all_trainers) - set(augmented_nodes))
     print("-----------------------------------")
     print("augmented_nodes", augmented_nodes)
-    print("-------------- review ---------------------")
+    print("-----------------------------------")
     print("no_augmented_nodes", no_augmented_nodes)
 
     model_original = Net(input_shape = final_data["train_loader"].dataset.tensors[0].shape[-1])
@@ -170,7 +170,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         malicious_detected_trustfed = []
         malicious_detected_truflass = []
 
-        cheat = random.sample(no_augmented_nodes, int(len(augmented_nodes)*0.3) )
+        # cheat = random.sample(no_augmented_nodes, int(len(augmented_nodes)*0.3) )
 
         start = 0
         end = 0
@@ -314,9 +314,9 @@ if __name__ == '__main__':
     
     for n_specials in special_options:
         for experiment_counter in range(experiments):
-            print("-----------------------------------")
+            print("---------------- REVIEW -------------------")
             print("running experiment:", experiment_counter)
-            print("-----------------------------------")
+            print("-------------------------------------------")
             experiment_rare_cases(experiment_counter, n_specials, final_data)
     play('./data/alarm.mp3')
     
