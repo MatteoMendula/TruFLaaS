@@ -296,7 +296,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
     plt.figure(figsize = (5,5))
     plt.xlabel('Rounds')
     plt.ylabel('Accuracy [%]')
-    plt.ylim([50, 100])
+    plt.ylim([60, 90])
     plt.plot(range(iteration), acc_performance_metrics[1]*100, label='No node filtering', linestyle = ':')
     plt.plot(range(iteration), acc_performance_metrics[2]*100, label='TrustFed', linestyle = '--')
     plt.plot(range(iteration), acc_performance_metrics[3]*100, label='TruFLaaS', color="red", linestyle = '-')

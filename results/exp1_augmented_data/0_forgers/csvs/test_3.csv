@@ -1,0 +1,2 @@
+Iteration,no_special_loss,no_special_f1,no_special_accuracy,no_filter_loss,no_filter_f1,no_filter_accuracy,trustfed_loss,trustfed_f1,trustfed_accuracy,truflass_loss,truflass_f1,truflass_accuracy
+0,1.6212375164031982,0.32887908496732027,0.44166666666666665,1.7134002447128296,0.23175149326078118,0.375,1.7154654264450073,0.23175149326078118,0.375,1.7106187343597412,0.21892843509289542,0.35
