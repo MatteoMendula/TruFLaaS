@@ -49,6 +49,9 @@ def process_data_final(device="cpu"):
     y_test = torch.tensor(y_test).long()
     y_train_no_rares = torch.tensor(y_train_no_rares).long()
     y_train_yes_rares = torch.tensor(y_train_yes_rares).long()
+    y_test_no_rares = torch.tensor(y_test_no_rares).long()
+    y_test_yes_rares = torch.tensor(y_test_yes_rares).long()
+
 
     # transform to torch tensor - standard
     tensor_x_train = torch.Tensor(x_train)
@@ -119,7 +122,6 @@ def process_data_final(device="cpu"):
     final_data["test_loader_no_rares"] = test_loader_no_rares
     final_data["test_loader_yes_rares"] = test_loader_yes_rares
 
-
     return final_data
 
 def select_node_to_discard_trustfed(result):
@@ -171,12 +173,12 @@ def aggregate_model_weighted(models, memory, iteration, device):
       if model_id in memory.keys():
         weight = 1 - ( memory[model_id] / (iteration + 1) )
       sum_weights += weight
-      print(f"{model_id}) weight={weight}")
+      # print(f"{model_id}) weight={weight}")
       for param in model_model.parameters():
         model_aggregated[i] += param.detach().numpy() * weight
         i += 1
 
-    print("sum_weights", sum_weights)
+    # print("sum_weights", sum_weights)
     model_aggregated = np.array(model_aggregated, dtype=object) / sum_weights
     
     return model_aggregated
