@@ -19,7 +19,7 @@ size = 20
 num_workers = 100
 n_validators = 100
 rounds = 100
-special_options = [0, 25, 40]
+special_options = [40, 25, 0]
 
 def experiment_rare_cases(experiment_counter, n_specials, final_data):
 
@@ -262,6 +262,11 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         print(f'Loss with outliers no filter {model_performance_with_outliers_no_filter["loss"]}')
         print(f'Loss with outliers trustfed filter {model_performance_with_outliers_trustfed_filter["loss"]}')
         print(f'Loss with rares truflass filter {model_performance_with_rares_truflass_filter["loss"]}')
+        print("----------------------------------")
+        print(f'acc no outliers is {model_performance_without_outliers["accuracy"]}')
+        print(f'acc with outliers no filter {model_performance_with_outliers_no_filter["accuracy"]}')
+        print(f'acc with outliers trustfed filter {model_performance_with_outliers_trustfed_filter["accuracy"]}')
+        print(f'acc with rares truflass filter {model_performance_with_rares_truflass_filter["accuracy"]}')
 
         acc_performance_metrics[0][itr] = model_performance_without_outliers["accuracy"]
         acc_performance_metrics[1][itr] = model_performance_with_outliers_no_filter["accuracy"]

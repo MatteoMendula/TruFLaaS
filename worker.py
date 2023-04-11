@@ -68,6 +68,9 @@ class Worker():
             pred_labels = torch.argmax(preds_softmax, dim=1)
             correct_preds = torch.sum(pred_labels == self.test_output)
 
+            print("correct_preds", correct_preds)
+            print("len(self.test_output)", len(self.test_output))
+
             # Compute accuracy
             f1 = f1_score(self.test_output.numpy(), pred_labels.numpy(), average='weighted')
             accuracy = float(correct_preds) / float(len(self.test_output))

@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import csv
 import copy
+import random
 
 import torch.multiprocessing
 from sklearn.model_selection import train_test_split
@@ -156,7 +157,7 @@ def select_node_to_discard_truflass(result):
 
 
 # FED AVERAGE WEIGHTED
-def aggregate_model_weighted(models, memory, iteration, device):
+def aggregate_model_weighted(models, memory, iteration, iterations, device = "cpu"):
     if device != "cpu":
       return aggregate_model_cuda_weighted(models, device)
     # no cuda
@@ -166,19 +167,23 @@ def aggregate_model_weighted(models, memory, iteration, device):
 
     sum_weights = 0
     for model in models:
+      select = random.randint(0, 1)
       i = 0
       model_model = model[0]
       model_id = model[1]
       weight = 1
-      if model_id in memory.keys():
-        weight = 1 - ( memory[model_id] / (iteration + 1) )
+      if select == 0:
+      # if model_id in memory.keys():
+        # weight = 0 if memory[model_id] >= iterations/2 else 1
+        weight = 0 
+        print(f"{model_id}) weight={weight}")
       sum_weights += weight
-      # print(f"{model_id}) weight={weight}")
       for param in model_model.parameters():
         model_aggregated[i] += param.detach().numpy() * weight
         i += 1
 
-    # print("sum_weights", sum_weights)
+    print("sum_weights", sum_weights)
+
     model_aggregated = np.array(model_aggregated, dtype=object) / sum_weights
     
     return model_aggregated

@@ -19,7 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = "cpu"
 
 experiments = 5
-iteration = 50
+iterations = 20
 size = 20
 num_workers = 100
 n_validators = 100
@@ -137,9 +137,9 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
 
     results_only_rares = np.zeros(num_workers)
     results_only_overall = np.zeros(num_workers)
-    acc_performance_metrics = np.zeros((6,iteration))
+    acc_performance_metrics = np.zeros((6,iterations))
 
-    csv_results = [["Iteration", 
+    csv_results = [["iterations", 
                     "no_special_loss", "no_special_f1", "no_special_accuracy",
                     "no_filter_loss", "no_filter_f1", "no_filter_accuracy",
                     "rare_only_filter_loss", "rare_only_filterf1", "rare_only_filter_accuracy",
@@ -148,11 +148,11 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
                     "both_filters_union_loss", "both_filters_union_f1", "both_filters_union_accuracy"]]
     
     # ------------------------------------------- learning starts here
-    for itr in range(iteration):
+    for itr in range(iterations):
 
         print(f'--------------------------------------------------------')
         print(f'exp2_rare_data_intersection_and_union_overall_scoring')
-        print(f'exp_counter: {experiment_counter} - Iteration {itr}')
+        print(f'exp_counter: {experiment_counter} - iterations {itr}')
         print(f'n_specials: {n_specials}')
         print(f'--------------------------------------------------------')
         # train nodes without specials
@@ -235,8 +235,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         print("to_remove_detected_both_intersection", to_remove_detected_both_intersection)
         print("to_remove_detected_both_union", to_remove_detected_both_union)
 
-        # malicious_detected_trustfed = random.sample(malicious_detected_trustfed, int(len(malicious_detected_trustfed)/2))
-
+    
         end_time = time.time()
         time_taken = end_time - start_time
         print(f'Time taken for validation is {time_taken}')
@@ -249,6 +248,20 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         models_with_rares_both_filters_intersection = []
         models_with_rares_both_filters_union = []
 
+        # for w in workers_yes_rares_no_filter:
+        #     if not w in to_remove_detected_rares:
+        #         models_with_outliers_rares_filter.append(workers_yes_rares_no_filter[w].model)
+        # for w in workers_yes_rares_overall_filter:
+        #     if not w in to_remove_detected_overall:
+        #         models_with_rares_overall_filter.append(workers_yes_rares_overall_filter[w].model)
+        # for w in workers_yes_rares_both_filters_intersection:
+        #     if not w in to_remove_detected_both_intersection:
+        #         models_with_rares_both_filters_intersection.append(workers_yes_rares_both_filters_intersection[w].model)
+        # for w in workers_yes_rares_both_filters_union:
+        #     if not w in to_remove_detected_both_union:
+        #         models_with_rares_both_filters_union.append(workers_yes_rares_both_filters_union[w].model)
+
+
         for w in workers_yes_rares_rares_filter:
             models_with_outliers_rares_filter += [(workers_yes_rares_rares_filter[w].model, workers_yes_rares_rares_filter[w].id)]
         for w in workers_yes_rares_overall_filter:
@@ -258,13 +271,24 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         for w in workers_yes_rares_both_filters_union:
             models_with_rares_both_filters_union += [(workers_yes_rares_both_filters_union[w].model, workers_yes_rares_both_filters_union[w].id)]
 
+        # print("len(models_with_outliers_rares_filter)", len(models_with_outliers_rares_filter))
+        # print("len(models_with_rares_overall_filter)", len(models_with_rares_overall_filter))
+        # print("len(models_with_rares_both_filters_intersection)", len(models_with_rares_both_filters_intersection))
+        # print("len(models_with_rares_both_filters_union)", len(models_with_rares_both_filters_union))
+
         model_without_outliers_aggreated = aggregate_model(models_without_outliers, device)
         model_with_outliers_no_filter_aggregated = aggregate_model(models_with_outliers_no_filter, device)
 
-        model_with_outliers_rares_filter_aggregated = aggregate_model_weighted(models_with_outliers_rares_filter, memory["rares"], itr, device)
-        model_with_rare_overall_filter_aggregated = aggregate_model_weighted(models_with_rares_overall_filter, memory["overall"], itr, device)
-        model_with_rare_both_filters_aggregated_intersection = aggregate_model_weighted(models_with_rares_both_filters_intersection, memory["intersection"], itr, device)
-        model_with_rare_both_filters_aggregated_union = aggregate_model_weighted(models_with_rares_both_filters_union, memory["union"], itr, device)
+
+        # model_with_outliers_rares_filter_aggregated = aggregate_model(models_with_outliers_rares_filter, device)
+        # model_with_rare_overall_filter_aggregated = aggregate_model(models_with_rares_overall_filter, device)
+        # model_with_rare_both_filters_aggregated_intersection = aggregate_model(models_with_rares_both_filters_intersection, device)
+        # model_with_rare_both_filters_aggregated_union = aggregate_model(models_with_rares_both_filters_union, device)
+
+        model_with_outliers_rares_filter_aggregated = aggregate_model_weighted(models_with_outliers_rares_filter, memory["rares"], itr, iterations)
+        model_with_rare_overall_filter_aggregated = aggregate_model_weighted(models_with_rares_overall_filter, memory["overall"], itr, iterations)
+        model_with_rare_both_filters_aggregated_intersection = aggregate_model_weighted(models_with_rares_both_filters_intersection, memory["intersection"], itr, iterations)
+        model_with_rare_both_filters_aggregated_union = aggregate_model_weighted(models_with_rares_both_filters_union, memory["union"], itr, iterations)
 
         save_np_to_file(f'./results/exp2_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_without_rares_aggreated', model_without_outliers_aggreated)
         save_np_to_file(f'./results/exp2_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rares_no_filter_aggregated', model_with_outliers_no_filter_aggregated)
@@ -357,6 +381,19 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         this_run_results.append(model_performance_with_rares_both_union_filters["f1"])
         this_run_results.append(model_performance_with_rares_both_union_filters["accuracy"])
 
+        print("this round accuracies:")
+        print("model_performance_with_rares_no_filter[accuracy]", model_performance_with_rares_no_filter["accuracy"])
+        print("model_performance_with_rares_rares_filter[accuracy]", model_performance_with_rares_rares_filter["accuracy"])
+        print("model_performance_with_rares_overall_filter[accuracy]", model_performance_with_rares_overall_filter["accuracy"])
+        print("model_performance_with_rares_both_filters[accuracy] inters", model_performance_with_rares_both_intersection_filters["accuracy"])
+        print("model_performance_with_rares_both_filters[accuracy] union", model_performance_with_rares_both_union_filters["accuracy"])
+        print("this round losses:")
+        print("model_performance_with_rares_no_filter[loss]", model_performance_with_rares_no_filter["loss"])
+        print("model_performance_with_rares_rares_filter[loss]", model_performance_with_rares_rares_filter["loss"])
+        print("model_performance_with_rares_overall_filter[loss]", model_performance_with_rares_overall_filter["loss"])
+        print("model_performance_with_rares_both_filters[loss] inters", model_performance_with_rares_both_intersection_filters["loss"])
+        print("model_performance_with_rares_both_filters[loss] union", model_performance_with_rares_both_union_filters["loss"])
+
         csv_results.append(this_run_results)
 
         save_2d_matrix_to_csv_file(f'./results/exp2_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/csvs/', f'test_{experiment_counter}.csv', csv_results)
@@ -364,11 +401,12 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
     plt.figure(figsize = (5,5))
     plt.xlabel('Rounds')
     plt.ylabel('Accuracy [%]')
-    plt.ylim([65, 100])
-    plt.plot(range(iteration), (acc_performance_metrics[2])*100, label='Rares filter', linestyle = '--')
-    plt.plot(range(iteration), (acc_performance_metrics[3])*100, label='Overall filter', linestyle = '-.')
-    plt.plot(range(iteration), (acc_performance_metrics[3])*100, label='Both filters - union', linestyle = ':')
-    plt.plot(range(iteration), (acc_performance_metrics[4])*100, label='Both filters - intersection', color="red", linestyle = '-')
+    plt.ylim([30, 80])
+    plt.plot(range(iterations), (acc_performance_metrics[1])*100, label='No filter', linestyle = '.')
+    plt.plot(range(iterations), (acc_performance_metrics[2])*100, label='Rares filter', linestyle = '--')
+    plt.plot(range(iterations), (acc_performance_metrics[3])*100, label='Overall filter', linestyle = '-.')
+    plt.plot(range(iterations), (acc_performance_metrics[3])*100, label='Both filters - union', linestyle = ':')
+    plt.plot(range(iterations), (acc_performance_metrics[4])*100, label='Both filters - intersection', color="red", linestyle = '-')
     plt.axhline(y = 80, color = 'gray', linestyle = '--')
     plt.locator_params(axis="x", nbins=5)
     plt.legend()
