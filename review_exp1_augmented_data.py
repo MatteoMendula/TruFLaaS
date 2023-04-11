@@ -19,7 +19,7 @@ size = 20
 num_workers = 100
 n_validators = 100
 rounds = 100
-special_options = [40, 25, 0]
+special_options = [25, 10, 0]
 
 def experiment_rare_cases(experiment_counter, n_specials, final_data):
 
