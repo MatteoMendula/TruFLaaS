@@ -2,11 +2,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.feature_selection import SelectFromModel
-from sklearn.utils import class_weight
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
 
 import numpy as np
 
@@ -67,19 +63,23 @@ class Worker():
             output = model_1(self.test_input)
             output = torch.squeeze(output)
             loss = criterion(output, self.test_output).item()
-            
-            print("output", output)
-            print("shape", output.shape)
-            print("self test output", self.test_output)
-            print("shape", self.test_output.shape)
 
-            softmax_tensor = torch.nn.functional.softmax(output, dim=1)
+            preds_softmax = torch.nn.functional.softmax(output, dim=1)
+            pred_labels = torch.argmax(preds_softmax, dim=1)
+            correct_preds = torch.sum(pred_labels == self.test_output)
+
+            # Compute accuracy
+            f1 = f1_score(self.test_output.numpy(), pred_labels.numpy(), average='weighted')
+            accuracy = float(correct_preds) / float(len(self.test_output))
 
             # Print the shape of the resulting tensor
-            print(softmax_tensor.shape)
 
             # accuracy = accuracy_score(np.argmax(self.test_output, axis=0), np.argmax(output, axis=0))
-            return (None, loss)
+            return {
+                'loss': loss,
+                'accuracy': accuracy,
+                'f1': f1
+            }
 
     def set_weights(self, aggregated_numpy):
         for i, param in enumerate(self.model.parameters()):

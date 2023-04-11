@@ -14,7 +14,7 @@ import random
 from playsound import playsound as play
 
 experiments = 10
-iteration = 1
+iteration = 10
 size = 20
 num_workers = 30
 n_validators = 30
@@ -118,9 +118,13 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
     results_trustfed = np.zeros((num_workers, num_workers))
     # results_truflass = np.zeros((num_workers, num_workers))
     results_truflass = np.zeros((n_validators, num_workers))
-    mape_performance_metrics = np.zeros((4,iteration))
+    acc_performance_metrics = np.zeros((4,iteration))
 
-    csv_results = [["Iteration", "no_special_mae", "no_special_mape", "no_filter_mae", "no_filter_mape", "trustfed_mae", "trustfed_mape", "truflass_mae", "truflass_mape"]]
+    csv_results = [["Iteration", 
+                    "no_special_loss", "no_special_f1", "no_special_accuracy",
+                    "no_filter_loss", "no_filter_f1", "no_filter_accuracy",
+                    "trustfed_loss", "trustfed_f1", "trustfed_accuracy",
+                    "truflass_loss", "truflass_f1", "truflass_accuracy"]]
 
     # ------------------------------------------- learning starts here
     for itr in range(iteration):
@@ -167,9 +171,6 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         malicious_detected_truflass = []
 
         cheat = random.sample(no_augmented_nodes, int(len(augmented_nodes)*0.3) )
-
-        # print("results_trustfed")
-        # print(results_trustfed)
 
         start = 0
         end = 0
@@ -257,44 +258,52 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         model_performance_with_outliers_no_filter = test_worker.test_final_model(model_with_outliers_no_filter)
         model_performance_with_outliers_trustfed_filter = test_worker.test_final_model(model_with_outliers_trustfed_filter)
         model_performance_with_rares_truflass_filter = test_worker.test_final_model(model_with_rare_truflass_filter)
-        print(f'Loss no outliers is {model_performance_without_outliers}')
-        print(f'Loss with outliers no filter {model_performance_with_outliers_no_filter}')
-        print(f'Loss with outliers trustfed filter {model_performance_with_outliers_trustfed_filter}')
-        print(f'Loss with rares truflass filter {model_performance_with_rares_truflass_filter}')
-        mape_performance_metrics[0][itr] = model_performance_without_outliers[1]
-        mape_performance_metrics[1][itr] = model_performance_with_outliers_no_filter[1]
-        mape_performance_metrics[2][itr] = model_performance_with_outliers_trustfed_filter[1]
-        mape_performance_metrics[3][itr] = model_performance_with_rares_truflass_filter[1]
+        print(f'Loss no outliers is {model_performance_without_outliers["loss"]}')
+        print(f'Loss with outliers no filter {model_performance_with_outliers_no_filter["loss"]}')
+        print(f'Loss with outliers trustfed filter {model_performance_with_outliers_trustfed_filter["loss"]}')
+        print(f'Loss with rares truflass filter {model_performance_with_rares_truflass_filter["loss"]}')
+
+        acc_performance_metrics[0][itr] = model_performance_without_outliers["accuracy"]
+        acc_performance_metrics[1][itr] = model_performance_with_outliers_no_filter["accuracy"]
+        acc_performance_metrics[2][itr] = model_performance_with_outliers_trustfed_filter["accuracy"]
+        acc_performance_metrics[3][itr] = model_performance_with_rares_truflass_filter["accuracy"]
 
         this_run_results = []
         this_run_results.append(itr)
-        this_run_results.append(model_performance_without_outliers[0])
-        this_run_results.append(model_performance_without_outliers[1])
-        this_run_results.append(model_performance_with_outliers_no_filter[0])
-        this_run_results.append(model_performance_with_outliers_no_filter[1])
-        this_run_results.append(model_performance_with_outliers_trustfed_filter[0])
-        this_run_results.append(model_performance_with_outliers_trustfed_filter[1])
-        this_run_results.append(model_performance_with_rares_truflass_filter[0])
-        this_run_results.append(model_performance_with_rares_truflass_filter[1])
+        this_run_results.append(model_performance_without_outliers["loss"])
+        this_run_results.append(model_performance_without_outliers["f1"])
+        this_run_results.append(model_performance_without_outliers["accuracy"])
+
+        this_run_results.append(model_performance_with_outliers_no_filter["loss"])
+        this_run_results.append(model_performance_with_outliers_no_filter["f1"])
+        this_run_results.append(model_performance_with_outliers_no_filter["accuracy"])
+
+        this_run_results.append(model_performance_with_outliers_trustfed_filter["loss"])
+        this_run_results.append(model_performance_with_outliers_trustfed_filter["f1"])
+        this_run_results.append(model_performance_with_outliers_trustfed_filter["accuracy"])
+
+        this_run_results.append(model_performance_with_rares_truflass_filter["loss"])
+        this_run_results.append(model_performance_with_rares_truflass_filter["f1"])
+        this_run_results.append(model_performance_with_rares_truflass_filter["accuracy"])
         csv_results.append(this_run_results)
 
         save_2d_matrix_to_csv_file(f'./results/exp1_augmented_data/{n_augmented}_forgers/csvs/', f"test_{experiment_counter}.csv", csv_results)
 
+    print("acc_performance_metrics[1]", acc_performance_metrics[1])
+    print("acc_performance_metrics[2]", acc_performance_metrics[2])
+    print("acc_performance_metrics[3]", acc_performance_metrics[3])
+
     plt.figure(figsize = (5,5))
     plt.xlabel('Rounds')
-    # plt.ylabel('Aggregated Model Testing Loss')
     plt.ylabel('Accuracy [%]')
-    plt.ylim([65, 100])
-    # plt.plot(range(iteration), 1.4-mape_performance_metrics[0], label='MAPE with no node filtering')
-    plt.plot(range(iteration), (1-mape_performance_metrics[1])*100, label='No node filtering', linestyle = ':')
-    plt.plot(range(iteration), (1-mape_performance_metrics[2])*100, label='TrustFed', linestyle = '--')
-    plt.plot(range(iteration), (1-mape_performance_metrics[3])*100, label='TruFLaaS', color="red", linestyle = '-')
-    # plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+    plt.ylim([50, 100])
+    plt.plot(range(iteration), acc_performance_metrics[1]*100, label='No node filtering', linestyle = ':')
+    plt.plot(range(iteration), acc_performance_metrics[2]*100, label='TrustFed', linestyle = '--')
+    plt.plot(range(iteration), acc_performance_metrics[3]*100, label='TruFLaaS', color="red", linestyle = '-')
     plt.axhline(y = 80, color = 'gray', linestyle = '--')
     plt.locator_params(axis="x", nbins=5)
     plt.legend()
     plt.title(f"Node selection strategy with {n_augmented} nodes with augmented data")
-    # plt.show()
     create_folder_if_not_exists(f'./results/exp1_augmented_data/{n_augmented}_forgers/pngs/')
     create_folder_if_not_exists(f'./results/exp1_augmented_data/{n_augmented}_forgers/pdfs/')
     plt.savefig(f'./results/exp1_augmented_data/{n_augmented}_forgers/pngs/test_{experiment_counter}.png', format="png", bbox_inches='tight')
