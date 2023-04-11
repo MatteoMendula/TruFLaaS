@@ -4,25 +4,24 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
-from numpy.random import default_rng
 np.random.seed(1)
 
 from worker import Worker
-from net import Net
-from utils import aggregate_model, process_data_final, select_node_to_discard_trustfed, select_node_to_discard_truflass, save_np_to_file, save_2d_matrix_to_csv_file, create_folder_if_not_exists
+from net_review import Net
+from utils_review import aggregate_model, process_data_final, select_node_to_discard_trustfed, select_node_to_discard_truflass, save_np_to_file, save_2d_matrix_to_csv_file, create_folder_if_not_exists
 import random
 
 from playsound import playsound as play
 
 experiments = 10
-iteration = 15
+iteration = 1
 size = 20
-num_workers = 100
-n_validators = 100
+num_workers = 30
+n_validators = 30
 rounds = 100
+special_options = [0, 25, 40]
 
-def experiment_rare_cases(experiment_counter, n_specials):
-    final_data = process_data_final()
+def experiment_rare_cases(experiment_counter, n_specials, final_data):
 
     n_augmented = n_specials
     all_trainers = range(num_workers)
@@ -30,11 +29,10 @@ def experiment_rare_cases(experiment_counter, n_specials):
     no_augmented_nodes = list(set(all_trainers) - set(augmented_nodes))
     print("-----------------------------------")
     print("augmented_nodes", augmented_nodes)
-    print("-----------------------------------")
+    print("-------------- review ---------------------")
     print("no_augmented_nodes", no_augmented_nodes)
 
-
-    model_original = Net()
+    model_original = Net(input_shape = final_data["train_loader"].dataset.tensors[0].shape[-1])
     validator_workers = {}
     workers_no_augmented = {}
     workers_yes_augmented_no_filter = {}
@@ -49,21 +47,6 @@ def experiment_rare_cases(experiment_counter, n_specials):
 
     train_standard_big = [(data, target) for _,(data, target) in enumerate(final_data["train_loader_big"])]
     test_standard_big = [(data, target) for _,(data, target) in enumerate(final_data["test_loader_big"])]
-
-    # print("len(train_standard)", len(train_standard))
-    # print("len(test_standard)", len(test_standard))
-    # print("len(train_yes_rares)", len(train_yes_rares))
-    # print("len(train_no_rares)", len(train_no_rares))
-    # print("len(test_yes_rares)", len(test_yes_rares))
-    # print("len(test_no_rares)", len(test_no_rares))
-
-    # train_loader 103
-    # test_loader 109
-
-    # train_loader_no_rares 94
-    # train_loader_yes_rares 9
-    # test_loader_no_rares 97
-    # test_loader_yes_rares 12
 
     # training and testing baseline
     my_index_train = 0
@@ -184,6 +167,9 @@ def experiment_rare_cases(experiment_counter, n_specials):
         malicious_detected_truflass = []
 
         cheat = random.sample(no_augmented_nodes, int(len(augmented_nodes)*0.3) )
+
+        # print("results_trustfed")
+        # print(results_trustfed)
 
         start = 0
         end = 0
@@ -315,13 +301,14 @@ def experiment_rare_cases(experiment_counter, n_specials):
     plt.savefig(f'./results/exp1_augmented_data/{n_augmented}_forgers/pdfs/test_{experiment_counter}.pdf', format="pdf", bbox_inches='tight')
 
 if __name__ == '__main__':
+    final_data = process_data_final()
     
-    for n_specials in [0, 25, 40]:
-        for experiment_counter in range(10):
+    for n_specials in special_options:
+        for experiment_counter in range(experiments):
             print("-----------------------------------")
             print("running experiment:", experiment_counter)
             print("-----------------------------------")
-            experiment_rare_cases(experiment_counter, n_specials)
+            experiment_rare_cases(experiment_counter, n_specials, final_data)
     play('./data/alarm.mp3')
     
 

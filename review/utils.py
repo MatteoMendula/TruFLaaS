@@ -20,9 +20,8 @@ import keras
 
 from net import INCEPTION_Block
 
-
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-
+local_client_epochs = 1
 
 def split_df(df):
     # read data from pickle
@@ -34,18 +33,22 @@ def split_df(df):
     features = list(train_df.columns)
     features.remove("type")
 
+    # encode labels in the same way for train and test
     label_encoder = LabelEncoder()
     train_df["type"] = label_encoder.fit_transform(train_df["type"])
     test_df["type"] = label_encoder.transform(test_df["type"])
 
+    # scale data in the same way for train and test
     scaler = MinMaxScaler()
     train_df[features] = scaler.fit_transform(train_df[features])
     test_df[features] = scaler.transform(test_df[features])
 
+    # get all the values from all the columns except the type column
     X_train = train_df[features].values
-    y_train = train_df["type"].values
-
     X_test = test_df[features].values
+
+    # get all the values from the type column
+    y_train = train_df["type"].values
     y_test = test_df["type"].values
 
     clf = ExtraTreesClassifier(n_estimators=50, n_jobs=-1)
@@ -148,9 +151,8 @@ def assign_data_to_clients(clients: dict, X:np.ndarray, y:np.ndarray, nb_classes
         clients[client_name] = list(zip(X, y))
     return clients
 
-def create_clients(X, y, nb_classes, sampling_technique, num_clients=10, initial='clients'):
+def create_clients(X, y, nb_classes, sampling_technique, client_names):
     #create a list of client names
-    client_names = ['{}_{}'.format(initial, i+1) for i in range(num_clients)]
     clients = {client_names[i] : [] for i in range(len(client_names))}
     return assign_data_to_clients(clients, X, y, nb_classes, sampling_technique, X, y)
 
@@ -171,7 +173,7 @@ def f1_score(y_true, y_pred):
     precision = true_positives / (predicted_positives + K.epsilon())
     recall = true_positives / (possible_positives + K.epsilon())
     f1_val = 2*(precision*recall)/(precision+recall+K.epsilon())
-    return f1_val
+    return f1_val, precision, recall
 
 def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     # Attention and Normalization
@@ -192,10 +194,26 @@ def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     x = LayerNormalization(epsilon=1e-6)(x)
     return x + res
 
+
 def get_model(input_shape, nb_classes) -> tf.keras.Model:
-    head_size=64 # Embedding size for attention
-    num_heads=3 # Number of attention heads
-    ff_dim=128 # Hidden layer size in feed forward network inside transformer
+
+    print("get model input_shape[0]", input_shape[0])
+    print("get model input_shape", input_shape)
+    print("get model nb_classes", nb_classes)
+
+
+    return tf.keras.models.Sequential(
+        [
+            tf.keras.layers.Dense(64, input_dim=input_shape[0], activation='relu'),
+            tf.keras.layers.Dense(32, activation='relu'),
+            tf.keras.layers.Dropout(0.2),
+            tf.keras.layers.Dense(nb_classes, activation='softmax')
+        ])
+
+def get_model_original(input_shape, nb_classes) -> tf.keras.Model:
+    head_size=64                        # Embedding size for attention
+    num_heads=3                         # Number of attention heads
+    ff_dim=128                          # Hidden layer size in feed forward network inside transformer
     num_transformer_blocks=1
     mlp_units=[32]
     mlp_dropout=0.1
@@ -254,8 +272,8 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
     client_set[client_name]["model"].set_weights(global_weights)
 
     #fit local model with client's data
-    print(f"Round: {comm_round} | Client: {client_name} training")
-    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=1, verbose=0, class_weight=class_weights)
+    print(f"[TRAINING] Round: {comm_round} | Client: {client_name}")
+    client_set[client_name]["model"].fit(client_set[client_name]["dataset"], epochs=local_client_epochs, verbose=0, class_weight=class_weights)
 
     #scale the model weights and add to list
     # scaling_factor = weight_scalling_factor(client_set, client_name)
@@ -263,26 +281,37 @@ def train_client(client_name, global_weights, class_weights, client_set, comm_ro
     # scaled_local_weight_list.append(scaled_weights)
     # return scaled_weights
 
-def test_model(X_test, y_test,  model, comm_round, mode):
+def test_model(X_test, y_test,  model, comm_round, mode, client_name = None, evaluation_scores = None):
     cce = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
-    #logits = model.predict(X_test, batch_size=100)
-    logits = model.predict(X_test)
-    loss = cce(y_test, logits)
-    y_hat = np.argmax(logits, axis=1)
-    y_true = np.argmax(y_test, axis=1)
 
-    accuracy = accuracy_score(np.argmax(y_test, axis=1), np.argmax(logits, axis=1))
-    
-    r = Recall()
-    r.update_state(y_test, logits)
-    recall = r.result().numpy()
-    
-    p = Precision()
-    p.update_state(y_test, logits)
-    precision = p.result().numpy()
-    
-    f = f1_score(y_test, logits)
-    f1 = f.numpy()
+    if (client_name == None):
+        client_name = "all testing"
+
+    #logits = model.predict(_X_test, batch_size=100)
+    with tf.device('/cpu:0'):
+        logits = model.predict(X_test)
+        loss = cce(y_test, logits)
+        y_hat = np.argmax(logits, axis=1)
+        y_true = np.argmax(y_test, axis=1)
+
+        accuracy = accuracy_score(np.argmax(y_test, axis=1), np.argmax(logits, axis=1))
+        
+        f, precision, recall = f1_score(y_test, logits)
+        f1 = f.numpy()
+        # precision = precision.numpy()
+        # recall = recall.numpy()
+
+        r = Recall()
+        r.update_state(y_test, logits)
+        recall = r.result().numpy()
+        
+        p = Precision()
+        p.update_state(y_test, logits)
+        precision = p.result().numpy()
+
+    if client_name != None and evaluation_scores != None:
+        # append accuracy to list
+        evaluation_scores[client_name] = loss
     
     print('mode: {} | comm_round: {} | global_loss: {} | global_accuracy: {:.4} | global_recall: {:.4} | global_precision: {:.4} | global_f1_score: {:.4} \n'.format(mode, comm_round, loss, accuracy, recall, precision, f1))
     return loss, accuracy, precision, recall, f1

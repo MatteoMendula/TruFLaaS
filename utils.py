@@ -6,19 +6,28 @@ import csv
 import copy
 
 import torch.multiprocessing
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.feature_selection import SelectFromModel
+from sklearn.utils import class_weight
+from sklearn.metrics import accuracy_score
+
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 WINDOW_SIZE = 1
 PERCENTILES_ON_TRAINING = (18.262574724926324, 195.97552938214926)
 PERCENTILES_ON_TESTING = (64.5643214552666, 216.7330157866137)
 
-def save_2d_matrix_to_csv_file(filename, row_list):
-  with open(filename, 'w', newline='') as file:
+def save_2d_matrix_to_csv_file(path, filename, row_list):
+  create_folder_if_not_exists(path)
+  with open(path + filename, 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerows(row_list)
 
-def save_np_to_file(file_name, np_array):
-    with open(f'{file_name}.npy', 'wb') as f:
+def save_np_to_file(path, file_name, np_array):
+    create_folder_if_not_exists(path)
+    with open(path + file_name, 'wb') as f:
         np.save(f, np_array)
 
 def process_data():
@@ -62,7 +71,6 @@ def process_data():
   # drop the columns not needed
   cols_nan = train_data.columns[train_data.isna().any()].tolist()
   cols_const = [ col for col in train_data.columns if len(train_data[col].unique()) <= 2 ]
-
   cols_irrelevant = ['operational_setting_1', 'operational_setting_2', 'sensor_measurement_11', 'sensor_measurement_12', 'sensor_measurement_13']
 
   # Drop the columns without or with constant data
@@ -74,6 +82,8 @@ def process_data():
   test_data_yes_rares = test_data[test_data['RUL'] < PERCENTILES_ON_TESTING[0]]
   test_data_no_rares = test_data[test_data['RUL'] > PERCENTILES_ON_TESTING[0]]
 
+
+
   processed_data = {}
   processed_data["train_data"] = train_data
   processed_data["test_data"] = test_data
@@ -84,7 +94,7 @@ def process_data():
 
   return processed_data
 
-def transform_to_windowed_data(dataset, window_size, window_limit = 0, verbose = False):
+def transform_to_windowed_data(dataset, window_size, window_limit = 0, verbose = True):
 
   features = []
   labels = []
@@ -366,3 +376,7 @@ def aggregate_model_cuda_weighted(models, device):
     model_aggregated = torch.div(model_aggregated,len(models))
 
     return model_aggregated
+
+def create_folder_if_not_exists(folder_name):
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)

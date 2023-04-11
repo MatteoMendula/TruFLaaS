@@ -3,30 +3,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import constants
+from threading import Thread
+import tensorflow as tf
+import random
+import os
 
-def create_small_batches(clients_batched_standard, percentage_how_many_small, sample_indices):
-    original_size = len(clients_batched_standard.keys())
-    how_many_small = int(original_size * percentage_how_many_small)
+def create_small_batches(clients_batched_standard, special_clients, original_sample_size, small_sample_size):
     new_batches_with_small_clients = {}
-    for index, client_name in enumerate(clients_batched_standard.keys()):
+
+    for _, client_name in enumerate(clients_batched_standard.keys()):
+        sample_indices = np.random.choice(original_sample_size, small_sample_size, replace=False)
         # small clients
-        if index in range(how_many_small):
+        if client_name in special_clients:
             new_batches_with_small_clients[client_name] = [clients_batched_standard[client_name][index] for index in sample_indices]
         # normal clients
         else:        
             new_batches_with_small_clients[client_name] = clients_batched_standard[client_name]
     return new_batches_with_small_clients
 
-def create_noisy_batches(clients_batches_original, clients_batches_malicous, percentage_how_many_noisy, sample_indices):
+def create_noisy_batches(clients_batches_original, clients_batches_malicous, special_clients, sample_indices):
     # to run faster every client is how_small_percentage times smaller
-    number_of_clients = len(clients_batches_original.keys())
-    how_many_noisy = int(number_of_clients * percentage_how_many_noisy)
     new_batches_with_malicious_clients = {}
 
     # make how_many_noisy clients noisy
     for index, client_name in enumerate(clients_batches_original.keys()):
         # malicious clients
-        if index in range(how_many_noisy):
+        if client_name in special_clients:
             new_batches_with_malicious_clients[client_name] = clients_batches_malicous[client_name]
         else:
             new_batches_with_malicious_clients[client_name] = clients_batches_original[client_name]
@@ -37,67 +39,82 @@ def create_noisy_batches(clients_batches_original, clients_batches_malicous, per
 
     return new_batches_with_malicious_clients
 
-def create_batches_with_no_rares(clients_batches_original, clients_batches_no_rares, percentage_how_many_no_rares, sample_indices):
+def create_batches_with_no_rares(clients_batches_original, clients_batches_no_rares, special_clients, sample_indices):
     # to run faster every client is how_small_percentage times smaller
-    number_of_clients = len(clients_batches_original.keys())
-    how_many_no_rares = int(number_of_clients * percentage_how_many_no_rares)
     new_batches_with_no_rares_clients = {}
+    new_batches_with_no_rares_clients_final = {}
 
      # make how_many_noisy clients noisy
     for index, client_name in enumerate(clients_batches_original.keys()):
         # malicious clients
-        if index in range(how_many_no_rares):
+        if client_name in special_clients:
             new_batches_with_no_rares_clients[client_name] = clients_batches_no_rares[client_name]
         else:
             new_batches_with_no_rares_clients[client_name] = clients_batches_original[client_name]
 
+
     # reduce the size of all clients
     for client_name in new_batches_with_no_rares_clients.keys():
-        new_batches_with_no_rares_clients[client_name] = [new_batches_with_no_rares_clients[client_name][index] for index in sample_indices]
+        new_batches_with_no_rares_clients_final[client_name] = []
+        print("new_batches_with_no_rares_clients[{}]".format(client_name))
+        print(len(new_batches_with_no_rares_clients[client_name]))
+        for index in sample_indices:
+            print("index", index)
+            print("len new_batches_with_no_rares_clients[client_name]", len(new_batches_with_no_rares_clients[client_name]))
+            new_batches_with_no_rares_clients_final[client_name].append(new_batches_with_no_rares_clients[client_name][index])
+
+        # new_batches_with_no_rares_clients[client_name] = [new_batches_with_no_rares_clients[client_name][index] for index in sample_indices]
 
     return new_batches_with_no_rares_clients
 
-def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_factor = constants.std_factor, test_batch_rares = False):
-    if mode != "TRUFLAAS" and mode != "TRUSTFED" and mode != "UNION" and mode != "INTERSECTION":
+def select_best_clients(client_set : dict, test_batched, comm_round, mode, experiment_name):
+    if mode != "TRUFLAAS" and mode != "TRUSTFED":    
         print("[select_best_clients] mode error")
         return None
 
     client_names = list(client_set.keys())
     selected_clients = {}
-    evaluation_scores = {}
-    evaluation_scores_rares = {}
     global_count = utils.calculate_global_count(client_set)
 
     local_weight_list = list()
 
+    discarding_votes = {}
+    evaluation_scores = {}
+    threads = [None] * len(client_names)
+
+    print(" ------------------------ ")
     print("TESTING: ", mode)
-    for client_name in client_names:
-        model = client_set[client_name]["model"]
-        for(x_batch, y_batch) in test_batched:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
-            evaluation_scores[client_name] = g_accuracy
-            if test_batch_rares != False:
-                g_loss_rares, g_accuracy_rares, g_precision_rares, g_recall_rares, g_f1_rares = utils.test_model(x_batch, y_batch, model, comm_round, "local rates")
-                evaluation_scores_rares[client_name] = g_accuracy_rares
-
-    evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
-    evaluation_scores_std = np.std(list(evaluation_scores.values()))
-
-    if test_batch_rares != False:
-        evaluation_scores_mean_rares = np.mean(list(evaluation_scores_rares.values()))
-        evaluation_scores_std_rares = np.std(list(evaluation_scores_rares.values()))
-
-    for client_name in evaluation_scores.keys():
-        acc_score = evaluation_scores[client_name]
-        acc_score_rares = evaluation_scores_rares[client_name]
-        if (mode == "TRUFLAAS" and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std):
+    print(" ------------------------ ")
+    for i, client_name_tester_name in enumerate(client_names):
+        if mode == "TRUSTFED":
+            threads[i] = Thread(target=test_other_clients_trustfed, args=(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes, experiment_name))
+            threads[i].start()
+        elif mode == "TRUFLAAS":
+            client_to_test_name = client_name_tester_name
+            threads[i] = Thread(target=test_truflass_clients, args=(client_set, client_to_test_name, test_batched, mode, comm_round, evaluation_scores, experiment_name))
+            threads[i].start()
+            
+    for i in range(len(threads)):
+        threads[i].join()
+    
+    if mode == "TRUSTFED":
+        for client_name in discarding_votes.keys():
+            if discarding_votes[client_name] > int(len(client_names)/2):
+                print("discarding_votes[{}]".format(client_name), discarding_votes[client_name])
+                print("skipped: ", client_name)
+                continue
             selected_clients[client_name] = client_set[client_name]
-        elif (mode == "TRUSTFED" and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std and acc_score < evaluation_scores_mean + std_factor * evaluation_scores_std):
-            selected_clients[client_name] = client_set[client_name]
-        # here intersection and union switched because we are selecting the clients instead of excluding them
-        elif (mode == "INTERSECTION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares or acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std)):
-            selected_clients[client_name] = client_set[client_name]
-        elif (mode == "UNION" and (acc_score_rares > evaluation_scores_mean_rares - std_factor * evaluation_scores_std_rares and acc_score > evaluation_scores_mean - std_factor * evaluation_scores_std))):  
+
+    elif mode == "TRUFLAAS":
+        evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
+        evaluation_scores_std = np.std(list(evaluation_scores.values()))
+        print("evaluation_scores_mean: ", evaluation_scores_mean)
+        print("evaluation_scores_std: ", evaluation_scores_std)
+        for client_name in evaluation_scores.keys():
+            print("evaluation_scores[{}]: ".format(client_name), evaluation_scores[client_name])
+            if evaluation_scores[client_name] > evaluation_scores_mean + constants.std_factor * evaluation_scores_std:
+                print("skipped: ", client_name)
+                continue
             selected_clients[client_name] = client_set[client_name]
 
     print("selected clients: ", selected_clients.keys())
@@ -108,35 +125,88 @@ def select_best_clients(client_set : dict, test_batched, comm_round, mode, std_f
 
     return local_weight_list
 
-def select_all_clients(client_set, test_batched, comm_round):
-    global_count = utils.calculate_global_count(client_set)
-    client_names = list(client_set.keys())
+def select_best_clients_exp2(client_set : dict, test_batched_truflaas_overall, test_batched_truflaas_rare, comm_round, mode, experiment_name):
+    if mode != "UNION" and mode != "INTERSECTION":    
+        print("[select_best_clients] mode error")
+        return None
 
     local_weight_list = list()
+    client_names = list(client_set.keys())
+    selected_clients = {}
+    nodes_to_discard = []
+    global_count = utils.calculate_global_count(client_set)
 
-    # test anyway
-    print("TESTING: ", "ALL")
-    for client_name in client_names:
-        model = client_set[client_name]["model"]
-        for(x_batch, y_batch) in test_batched:
-            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "local")
+    evaluation_scores_overall = {}
+    evaluation_scores_rare = {}
+    threads = [None] * len(client_names) * 2 # 2 because we test on overall and rare
 
+    print(" ------------------------ ")
+    print("TESTING: ", mode)
+    print(" ------------------------ ")
+    for i, client_to_test_name in enumerate(client_names):
+        threads[i] = Thread(target=test_truflass_clients, args=(client_set, client_to_test_name, test_batched_truflaas_overall, mode, comm_round, evaluation_scores_overall, experiment_name))
+        threads[i] = Thread(target=test_truflass_clients, args=(client_set, client_to_test_name, test_batched_truflaas_rare, mode, comm_round, evaluation_scores_rare, experiment_name))
+        threads[i].start()
+            
+    for i in range(len(threads)):
+        threads[i].join()
+
+    evaluation_scores_overall_mean = np.mean(list(evaluation_scores_overall.values()))
+    evaluation_scores_overall_std = np.std(list(evaluation_scores_overall.values()))
+
+    evaluation_scores_rare_mean = np.mean(list(evaluation_scores_rare.values()))
+    evaluation_scores_rare_std = np.std(list(evaluation_scores_rare.values()))
+
+    print("evaluation_scores_mean: ", evaluation_scores_overall_mean)
+    print("evaluation_scores_std: ", evaluation_scores_overall_std)
+    print("evaluation_scores_rare_mean: ", evaluation_scores_rare_mean)
+    print("evaluation_scores_rare_std: ", evaluation_scores_rare_std)
+    for client_name in evaluation_scores_overall.keys():
+        print("evaluation_scores[{}] overall: ".format(client_name), evaluation_scores_overall[client_name])
+        print("evaluation_scores[{}] rare: ".format(client_name), evaluation_scores_rare[client_name])
+        if (mode == "UNION" and (evaluation_scores_overall[client_name] > evaluation_scores_overall_mean + constants.std_factor * evaluation_scores_overall_std                 \
+            or evaluation_scores_rare[client_name] > evaluation_scores_rare_mean + constants.std_factor * evaluation_scores_rare_std))                                      \
+            or (mode == "INTERSECTION" and (evaluation_scores_overall[client_name] > evaluation_scores_overall_mean + constants.std_factor * evaluation_scores_overall_std  \
+            and evaluation_scores_rare[client_name] > evaluation_scores_rare_mean + constants.std_factor * evaluation_scores_rare_std)):
+            print("skipped: ", client_name)
+            continue
+        selected_clients[client_name] = client_set[client_name]
+
+    print("selected clients: ", selected_clients.keys())
+
+    for client_name in selected_clients.keys():
+        model_weights = utils.get_model_weights(selected_clients, client_name, global_count) 
+        local_weight_list.append(model_weights)
+
+    return local_weight_list
+
+
+def select_all_clients(client_set):
+    global_count = utils.calculate_global_count(client_set)
+
+    local_weight_list = list()
+    print("TESTING: ", "SELECT ALL")
     for client_name in client_set.keys():
         model_weights = utils.get_model_weights(client_set, client_name, global_count) 
         local_weight_list.append(model_weights)
 
     return local_weight_list
 
-def save_graphs(dict_of_metrics, experiment_name, special_clients):
+def save_graphs(dict_of_metrics, experiment_name, percentage_special_clients):
     print("dict_of_metrics", dict_of_metrics)
     print("experiment_name", experiment_name)
-    print("special_clients", special_clients)
+    print("percentage_special_clients", percentage_special_clients)
 
-    case_name = "reduced_{}".format(str(special_clients))
+    case_name = "case_{}".format(str(percentage_special_clients))
     colors = {
         "TRUFLAAS": "red",
         "TRUSTFED": "blue",
-        "NO_SELECTION": "green"
+        "NO_SELECTION": "green",
+
+        "UNION": "red",
+        "INTERSECTION": "blue",
+        "OVERALL": "green",
+        "RARE": "grey",
     }
     for metric in constants.testing_metrics:
         plt.clf()
@@ -144,29 +214,34 @@ def save_graphs(dict_of_metrics, experiment_name, special_clients):
             # case = "TRUFLAAS"/"TRUSTFED"/"NO_SELECTION"
             plt.plot(dict_of_metrics[case][metric], label="{}_{}".format(case, metric), color=colors[case])
         plt.legend()
+        folder_path = "./results/{}/{}".format(experiment_name, case_name)
+        create_folder_if_not_exists(folder_path)
         plt.savefig("./results/{}/{}/{}.png".format(experiment_name, case_name, metric))
         # plt.show()
 
-def save_csv(dict_of_metrics, experiment_name, special_clients, is_union_intersection = False):
+def save_csv(dict_of_metrics, experiment_name, percentage_special_clients, is_union_intersection = False):
     print("dict_of_metrics", dict_of_metrics)
     print("experiment_name", experiment_name)
-    print("special_clients", special_clients)
+    print("percentage_special_clients", percentage_special_clients)
 
-    case_name = "reduced_{}".format(str(special_clients))
-    if is_union_intersection != False:
+    case_name = "case_{}".format(str(percentage_special_clients))
+    if is_union_intersection == False:
         header = ["round","loss_no_selection", "loss_truflaas", "loss_trustfed"]
         header += ["accuracy_no_selection", "accuracy_truflaas", "accuracy_trustfed"]
         header += ["precision_no_selection", "precision_truflaas", "precision_trustfed"]
         header += ["recall_no_selection", "recall_truflaas", "recall_trustfed"]
         header += ["f1_no_selection", "f1_truflaas", "f1_trustfed"]
     else:
-        header = ["round","loss_no_selection", "loss_union", "loss_intersection"]
-        header += ["accuracy_no_selection", "accuracy_union", "accuracy_intersection"]
-        header += ["precision_no_selection", "precision_union", "precision_intersection"]
-        header += ["recall_no_selection", "recall_union", "recall_intersection"]
-        header += ["f1_no_selection", "f1_union", "f1_intersection"]
+        header = ["round","loss_no_selection", "loss_union", "loss_intersection", "loss_overall", "loss_rare"]
+        header += ["accuracy_no_selection", "accuracy_union", "accuracy_intersection", "accuracy_overall", "accuracy_rare"]
+        header += ["precision_no_selection", "precision_union", "precision_intersection", "precision_overall", "precision_rare"]
+        header += ["recall_no_selection", "recall_union", "recall_intersection", "recall_overall", "recall_rare"]
+        header += ["f1_no_selection", "f1_union", "f1_intersection", "f1_overall", "f1_rare"]
+
     line = ', '.join(str(e) for e in header)
-    with open("./results/{}/{}/out.csv".format(experiment_name, case_name), "w") as file:
+    folder_path = "./results/{}/{}".format(experiment_name, case_name)
+    create_folder_if_not_exists(folder_path)
+    with open("{}/out.csv".format(folder_path), "w") as file:
         file.write(line+"\n")
         for round in range(constants.comms_round):
             line = "{}, ".format(round)
@@ -182,6 +257,10 @@ def sample_test(X_test, y_test, sample_percentage=0.2):
     y_test_sample = y_test[sample_indices]
     return X_test_sample, y_test_sample
 
+def create_testing_batched(X_test, y_test):
+    test_batched = tf.data.Dataset.from_tensor_slices((X_test, y_test)).batch(len(X_test))
+    return test_batched
+
 def get_rare_cases_from_df(df):
     return df[df["type"] == "gafgyt_scan"]
 
@@ -196,3 +275,63 @@ def create_noisy_df(df):
     noisy_df = df_only_data + noise
     noisy_df['type'] = df['type']
     return noisy_df
+
+def test_other_clients_trustfed(client_set, client_names, client_name_tester_name, mode, comm_round, discarding_votes, experiment_name):
+    evaluation_scores = {}
+    for client_name in client_names:
+        # a client cannot test itself
+        if client_name == client_name_tester_name:
+            continue
+        model = client_set[client_name]["model"]
+        test_batched_client = client_set[client_name_tester_name]["testing"]
+        # for (x_batch, y_batch) in test_batched:
+        for (x_batch, y_batch) in test_batched_client:
+            g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "[{}]local_{}".format(experiment_name, mode))
+            evaluation_scores[client_name] = np.round(g_loss, 3)
+
+    evaluation_scores_mean = np.mean(list(evaluation_scores.values()))
+    evaluation_scores_std = np.std(list(evaluation_scores.values()))
+
+    for client_name in client_names:
+        if client_name == client_name_tester_name:
+            continue
+        if client_name not in discarding_votes.keys():
+            discarding_votes[client_name] = 0
+        # if mode == "TRUFLAAS" and evaluation_scores[client_name] < evaluation_scores_mean - constants.std_factor * evaluation_scores_std:
+        #     discarding_votes[client_name] += 1
+        elif mode == "TRUSTFED" and (evaluation_scores[client_name] < evaluation_scores_mean - constants.std_factor * evaluation_scores_std or evaluation_scores[client_name] > evaluation_scores_mean + constants.std_factor * evaluation_scores_std):
+            discarding_votes[client_name] += 1
+
+def test_truflass_clients(client_set, client_to_test_name, test_batched, mode, comm_round, evaluation_scores, experiment_name):
+    model = client_set[client_to_test_name]["model"]
+    for (x_batch, y_batch) in test_batched:
+        g_loss, g_accuracy, g_precision, g_recall, g_f1 = utils.test_model(x_batch, y_batch, model, comm_round, "[{}]local_{}".format(experiment_name, mode))
+        evaluation_scores[client_to_test_name] = np.round(g_loss, 3)
+
+def split_x_y_into_chunks(x, y, n_chunks):
+    if len(x) != len(y):
+        return "error"
+    def randomize_indexes(l, parts):
+        list_len = len(l)
+        list_indexes = list(range(list_len))
+        random.shuffle(list_indexes)
+        return list_indexes
+
+    def chunkify_indexes(lst,n):
+        return [lst[i::n] for i in range(n)]
+    
+    indexes = randomize_indexes(x, 10)
+    indexes_chunks = chunkify_indexes(indexes, n_chunks)
+    my_structure = {}
+    for index in range(len(indexes_chunks)):
+        my_structure[index] = {}
+        my_structure[index]["x"] = []
+        my_structure[index]["y"] = []
+        for el in indexes_chunks[index]:
+            my_structure[index]["x"].append(x[el])
+            my_structure[index]["y"].append(y[el])
+    return my_structure
+
+def create_folder_if_not_exists(folder_name):
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
