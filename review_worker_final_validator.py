@@ -24,11 +24,11 @@ class WorkerFinalValidator():
             output_rares = torch.squeeze(output_rares)
             loss_rares = criterion(output_rares, self.test_output_rares).item()
 
-            preds_softmax_overall = torch.nn.functional.softmax(loss_overall, dim=1)
+            preds_softmax_overall = torch.nn.functional.softmax(output_overall, dim=1)
             pred_labels_overall = torch.argmax(preds_softmax_overall, dim=1)
             correct_preds_overall = torch.sum(pred_labels_overall == self.test_output)
 
-            preds_softmax_rares = torch.nn.functional.softmax(loss_rares, dim=1)
+            preds_softmax_rares = torch.nn.functional.softmax(output_rares, dim=1)
             pred_labels_rares = torch.argmax(preds_softmax_rares, dim=1)
             correct_preds_rares = torch.sum(pred_labels_rares == self.test_output)
 
