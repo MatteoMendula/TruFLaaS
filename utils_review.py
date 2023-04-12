@@ -172,10 +172,9 @@ def aggregate_model_weighted(models, memory, iteration, iterations, device = "cp
       model_model = model[0]
       model_id = model[1]
       weight = 1
-      if select == 0:
-      # if model_id in memory.keys():
-        # weight = 0 if memory[model_id] >= iterations/2 else 1
-        weight = 0 
+      # if select == 0:
+      if model_id in memory.keys():
+        weight = 1 - ( memory[model_id] / (iteration + 1) )
         print(f"{model_id}) weight={weight}")
       sum_weights += weight
       for param in model_model.parameters():
@@ -267,12 +266,16 @@ def process_data():
   processed_data["y_train"] = y_train
   processed_data["x_test"] = X_test
   processed_data["y_test"] = y_test
+
   processed_data["x_train_yes_rares"] = X_train_rare
-  processed_data["x_train_no_rares"] = X_train_no_rare
   processed_data["y_train_yes_rares"] = y_train_rare
+
+  processed_data["x_train_no_rares"] = X_train_no_rare
   processed_data["y_train_no_rares"] = y_train_no_rare
-  processed_data["x_test_yes_rares"] = X_test_rare
+
   processed_data["x_test_no_rares"] = X_test_no_rare
+  processed_data["x_test_yes_rares"] = X_test_rare
+  
   processed_data["y_test_yes_rares"] = y_test_rare
   processed_data["y_test_no_rares"] = y_test_no_rare
 
