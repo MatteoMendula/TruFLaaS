@@ -154,7 +154,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
     for itr in range(iterations):
 
         print(f'--------------------------------------------------------')
-        print(f'exp2B_rare_data_intersection_and_union_overall_scoring')
+        print(f'exp2C_rare_data_intersection_and_union_overall_scoring')
         print(f'exp_counter: {experiment_counter} - iterations {itr}')
         print(f'n_specials: {n_specials}')
         print(f'--------------------------------------------------------')
@@ -293,12 +293,12 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
         model_with_rare_both_filters_aggregated_intersection = aggregate_model_weighted(models_with_rares_both_filters_intersection, memory["intersection"], itr, iterations)
         model_with_rare_both_filters_aggregated_union = aggregate_model_weighted(models_with_rares_both_filters_union, memory["union"], itr, iterations)
 
-        save_np_to_file(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_without_rares_aggreated', model_without_outliers_aggreated)
-        save_np_to_file(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rares_no_filter_aggregated', model_with_outliers_no_filter_aggregated)
-        save_np_to_file(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rares_rares_filter_aggregated', model_with_outliers_rares_filter_aggregated)
-        save_np_to_file(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rare_overall_filter_aggregated', model_with_rare_overall_filter_aggregated)
-        save_np_to_file(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rare_both_filters_aggregated', model_with_rare_both_filters_aggregated_intersection)
-        save_np_to_file(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rare_both_filters_aggregated', model_with_rare_both_filters_aggregated_union)
+        save_np_to_file(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_without_rares_aggreated', model_without_outliers_aggreated)
+        save_np_to_file(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rares_no_filter_aggregated', model_with_outliers_no_filter_aggregated)
+        save_np_to_file(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rares_rares_filter_aggregated', model_with_outliers_rares_filter_aggregated)
+        save_np_to_file(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rare_overall_filter_aggregated', model_with_rare_overall_filter_aggregated)
+        save_np_to_file(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rare_both_filters_aggregated', model_with_rare_both_filters_aggregated_intersection)
+        save_np_to_file(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/models/', f'test_{experiment_counter}_model_with_rare_both_filters_aggregated', model_with_rare_both_filters_aggregated_union)
 
         model_without_outliers = Net()
         model_without_outliers = model_without_outliers.to(device)
@@ -414,10 +414,10 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
     plt.locator_params(axis="x", nbins=5)
     plt.legend()
     plt.title(f"{n_rares} nodes with rares data")
-    create_folder_if_not_exists(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pngs/')
-    create_folder_if_not_exists(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pdfs/')
-    plt.savefig(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pngs/test_{experiment_counter}.png', format="png", bbox_inches='tight')
-    plt.savefig(f'./results/exp2B_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pdfs/test_{experiment_counter}.pdf', format="pdf", bbox_inches='tight')
+    create_folder_if_not_exists(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pngs/')
+    create_folder_if_not_exists(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pdfs/')
+    plt.savefig(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pngs/test_{experiment_counter}.png', format="png", bbox_inches='tight')
+    plt.savefig(f'./results/exp2C_rare_data_intersection_and_union_overall_scoring/{n_rares}_rares/pdfs/test_{experiment_counter}.pdf', format="pdf", bbox_inches='tight')
 
 if __name__ == '__main__':
     
