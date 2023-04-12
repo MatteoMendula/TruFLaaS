@@ -136,7 +136,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
     test_index_rare = random.sample(range(len(test_loader_yes_rares)), 1)[0]
     # test_index_overall = 0
     # test_index_rare = 0
-    test_worker = WorkerFinalValidator(0, (test_standard[test_index_overall][0], test_standard[test_index_overall][1]), (test_loader_yes_rares[test_index_rare][0], test_index_rare[test_index_overall][1]))
+    test_worker = WorkerFinalValidator(0, (test_standard[test_index_overall][0], test_standard[test_index_overall][1]), (test_loader_yes_rares[test_index_rare][0], test_loader_yes_rares[test_index_rare][1]))
 
     results_only_rares = np.zeros(num_workers)
     results_only_overall = np.zeros(num_workers)

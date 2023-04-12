@@ -12,7 +12,7 @@ class WorkerFinalValidator():
         self.test_input_overall, self.test_output_overall = validation_DataLoader_overall
         self.test_input_rares, self.test_output_rares = validation_Dataloader_rares
 
-    def test_other_model(self, model_1):
+    def test_final_model(self, model_1):
         criterion = nn.CrossEntropyLoss()
         model_1.eval()
         with torch.no_grad():
