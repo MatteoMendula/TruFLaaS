@@ -233,7 +233,7 @@ def process_data():
   
   # split normal data
   print("splitting normal data ------------")
-  X_train, y_train, X_test, y_test, label_encoder, rares_index = split_df(df)
+  X_train, y_train, X_test, y_test, label_encoder, rares_indexes = split_df(df)
   
   print("X_train type", type(X_train))
   print("X_train.shape", X_train.shape)
@@ -243,7 +243,7 @@ def process_data():
 
   # split rare data
   print("splitting rare data ------------")
-  X_train_rare, y_train_rare, X_test_rare, y_test_rare = get_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_index)
+  X_train_rare, y_train_rare, X_test_rare, y_test_rare = get_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_indexes)
   
   print("X_train type", type(X_train_rare))
   print("X_train_rare.shape", X_train_rare.shape)
@@ -253,7 +253,7 @@ def process_data():
 
   # split no_rare data
   print("splitting no rare data ------------")
-  X_train_no_rare, y_train_no_rare, X_test_no_rare, y_test_no_rare = remove_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_index)
+  X_train_no_rare, y_train_no_rare, X_test_no_rare, y_test_no_rare = remove_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_indexes)
 
   print("X_train_no_rare.shape", X_train_no_rare.shape)
   print("y_train_no_rare.shape", y_train_no_rare.shape)
@@ -282,19 +282,19 @@ def process_data():
   return processed_data
 
 
-def get_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_index):
+def get_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_indexes):
   _X_train = []
   _y_train = []
   _X_test = []
   _y_test = []
 
   for i in range(len(X_train)):
-    if y_train[i] == rares_index:
+    if y_train[i] in rares_indexes:
       _X_train.append(X_train[i])
       _y_train.append(y_train[i])
 
   for i in range(len(X_test)):
-    if y_test[i] == rares_index:
+    if y_test[i] in rares_indexes:
       _X_test.append(X_test[i])
       _y_test.append(y_test[i])
 
@@ -305,19 +305,19 @@ def get_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_index):
 
   return _X_train, _y_train, _X_test, _y_test
 
-def remove_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_index):
+def remove_rare_cases_from_df(X_train, y_train, X_test, y_test, rares_indexes):
   _X_train = []
   _y_train = []
   _X_test = []
   _y_test = []
 
   for i in range(len(X_train)):
-    if y_train[i] != rares_index:
+    if not y_train[i] in rares_indexes:
       _X_train.append(X_train[i])
       _y_train.append(y_train[i])
 
   for i in range(len(X_test)):
-    if y_test[i] != rares_index:
+    if not y_test[i] in rares_indexes:
       _X_test.append(X_test[i])
       _y_test.append(y_test[i])
 
@@ -343,7 +343,7 @@ def split_df(df):
   label_encoder = LabelEncoder()
   train_df["type"] = label_encoder.fit_transform(train_df["type"])
   test_df["type"] = label_encoder.transform(test_df["type"])
-  rares_index = train_df["type"].value_counts().nsmallest(1).index.values.astype(int)[0]
+  rares_indexes = train_df["type"].value_counts().nsmallest(2).index.values.astype(int)
 
 
   # scale data in the same way for train and test
@@ -373,4 +373,4 @@ def split_df(df):
 
   # print("X_TRAiN:100", X_train[:100])
 
-  return X_train, y_train, X_test, y_test, label_encoder, rares_index
+  return X_train, y_train, X_test, y_test, label_encoder, rares_indexes
