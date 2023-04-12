@@ -420,8 +420,8 @@ if __name__ == '__main__':
     
     final_data = process_data_final()
     
-    for n_specials in special_options:
-        for experiment_counter in range(experiments):
+    for experiment_counter in range(experiments):
+        for n_specials in special_options:
             print("---------------- REVIEW -------------------")
             print("running experiment:", experiment_counter)
             print("-------------------------------------------")
