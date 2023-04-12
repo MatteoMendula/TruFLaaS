@@ -26,14 +26,17 @@ class WorkerFinalValidator():
 
             preds_softmax_overall = torch.nn.functional.softmax(output_overall, dim=1)
             pred_labels_overall = torch.argmax(preds_softmax_overall, dim=1)
-            correct_preds_overall = torch.sum(pred_labels_overall == self.test_output)
+            correct_preds_overall = torch.sum(pred_labels_overall == self.test_output_overall)
 
             preds_softmax_rares = torch.nn.functional.softmax(output_rares, dim=1)
             pred_labels_rares = torch.argmax(preds_softmax_rares, dim=1)
-            correct_preds_rares = torch.sum(pred_labels_rares == self.test_output)
+            correct_preds_rares = torch.sum(pred_labels_rares == self.test_output_rares)
 
             print("correct_preds_overall", correct_preds_overall)
-            print("len(self.test_output)", len(self.test_output_overall))
+            print("len(self.test_output_overall)", len(self.test_output_overall))
+
+            print("correct_preds_rares", correct_preds_rares)
+            print("len(self.test_output_rares)", len(self.test_output_rares))
 
             # Compute accuracy
             f1_overall = f1_score(self.test_output_overall.numpy(), pred_labels_overall.numpy(), average='weighted')
