@@ -19,7 +19,7 @@ from playsound import playsound as play
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = "cpu"
 
-experiments = 5
+experiments = 10
 iterations = 20
 size = 20
 num_workers = 100
@@ -423,8 +423,8 @@ if __name__ == '__main__':
     
     final_data = process_data_final()
     
-    for experiment_counter in range(experiments):
-        for n_specials in special_options:
+    for n_specials in special_options:
+        for experiment_counter in range(experiments):
             print("---------------- REVIEW -------------------")
             print("running experiment:", experiment_counter)
             print("-------------------------------------------")

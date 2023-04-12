@@ -132,7 +132,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
 
     # tester node - [testing on overall]
     test_index = random.sample(range(len(test_standard)), 1)[0]
-    test_index = 0
+    # test_index = 0
     test_worker = Worker(0, 0.1, copy.deepcopy(model_original), (None, None), (test_standard[test_index][0], test_standard[test_index][1]))
 
     results_only_rares = np.zeros(num_workers)

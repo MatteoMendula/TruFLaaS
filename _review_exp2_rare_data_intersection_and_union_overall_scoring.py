@@ -18,7 +18,7 @@ from playsound import playsound as play
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 device = "cpu"
 
-experiments = 5
+experiments = 10
 iterations = 20
 size = 20
 num_workers = 100
@@ -132,7 +132,7 @@ def experiment_rare_cases(experiment_counter, n_specials, final_data):
 
     # tester node - [testing on overall]
     test_index = random.sample(range(len(test_standard)), 1)[0]
-    test_index = 0
+    # test_index = 0
     test_worker = Worker(0, 0.1, copy.deepcopy(model_original), (None, None), (test_standard[test_index][0], test_standard[test_index][1]))
 
     results_only_rares = np.zeros(num_workers)
@@ -420,8 +420,8 @@ if __name__ == '__main__':
     
     final_data = process_data_final()
     
-    for n_specials in special_options:
-        for experiment_counter in range(experiments):
+    for experiment_counter in range(experiments):
+        for n_specials in special_options:
             print("---------------- REVIEW -------------------")
             print("running experiment:", experiment_counter)
             print("-------------------------------------------")
