@@ -25,7 +25,8 @@ size = 20
 num_workers = 100
 n_validators = 100
 rounds = 100
-special_options = [0, 25, 40]
+# special_options = [0, 25, 40]
+special_options = [25]
 
 def experiment_rare_cases(experiment_counter, n_specials, final_data):
 
@@ -423,8 +424,8 @@ if __name__ == '__main__':
     
     final_data = process_data_final()
     
-    for n_specials in special_options:
-        for experiment_counter in range(experiments):
+    for experiment_counter in range(experiments):
+        for n_specials in special_options:
             print("---------------- REVIEW -------------------")
             print("running experiment:", experiment_counter)
             print("-------------------------------------------")
