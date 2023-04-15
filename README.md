@@ -1,6 +1,8 @@
 # TruFLaaS
 ## A novel Trustworthy Federated Learning Framework
 
+![comparison table](https://raw.githubusercontent.com/MatteoMendula/TruFLaaS/review/assets/architecture.png)
+
 TruFLaaS is a blockchain-based architecture that achieves Trustworthy federated learning as a service (TruFLaaS). Our solution provides trustworthiness among 3rd-party organizations by leveraging blockchain, smart contracts, and a decentralized oracle network. 
 
 The table below highlights the main differences with the other state of the art solutions.
@@ -25,7 +27,7 @@ NASA (https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4711414).
 
 The figure below shows the rare case distribution inside the Turbofan Engine Degradation simulation dataset.
 
-![comparison table](https://raw.githubusercontent.com/MatteoMendula/TruFLaaS/review/assets/RUL_distribution_test_1q.png)
+![predictive maintanence](https://raw.githubusercontent.com/MatteoMendula/TruFLaaS/review/assets/RUL_distribution_test_1q.png)
 
 ## Experiments (review extension) 
 ### Botnet Attack Detection
@@ -38,12 +40,10 @@ To address the review provided by the editorial board we extended our experiment
 
 The figure below shows the rare case distribution inside the Turbofan Engine Degradation simulation dataset.
 
-![predictive maintanence](https://raw.githubusercontent.com/MatteoMendula/TruFLaaS/review/assets/RUL_distribution_test_1q.png)
+![nbaiot rares](https://raw.githubusercontent.com/MatteoMendula/TruFLaaS/review/assets/botnet_rare_cases.png)
 
 TruFLaaS has been compared with both no node filtering techniques and well known state-of-the-art-solutions.
 In particular, we have explored and analyzed different advantages offered by our solution if compared with weight up with [TrustFed](https://ieeexplore.ieee.org/document/9416805).
-
-![nbaiot rares](https://raw.githubusercontent.com/MatteoMendula/TruFLaaS/review/assets/botnet_rare_cases.png)
 
 ----
 
